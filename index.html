@@ -1,0 +1,1204 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>BPM Consulting · Escritorio del Agente</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap">
+
+<style> 
+  :root{
+  --primary:#002E44;
+  --primary-2:#0A4460;
+  --primary-3:#1D5C7C;
+  --primary-l:#E6EDF1;
+
+  --secondary:#00BFFC;
+  --secondary-d:#009BCE;
+  --secondary-l:#E0F7FE;
+
+  --tertiary:#442205;
+  --tertiary-l:#F5EDE6;
+
+  --neutral:#333333;
+
+  /* ── Barra lateral y texto ── */
+  --nav:var(--primary); --nav-2:var(--primary-2);
+  --ink:#002E44; --ink-2:#4A5A66; --ink-3:#8B979F;
+
+  /* ── Estados ── */
+  --ok:#0E8F5C;      --ok-l:#E4F5EE;
+  --warn:#B87309;    --warn-l:#FBF0E0;
+  --danger:#C62828;  --danger-l:#FBEAEA;
+  --live:var(--secondary-d); --live-l:var(--secondary-l);
+  --off:#8B979F;     --off-l:#EEF1F3;
+
+  /* ── Superficies ── */
+  --bg:#F2F5F7; --line:#DCE3E8; --line-2:#EBEFF2; --soft:#F7F9FB;
+
+  /* ── Compatibilidad con los nombres anteriores ── */
+  --marca:var(--secondary); --marca-d:var(--secondary-d); --marca-l:var(--secondary-l);
+  --teal:var(--secondary);  --teal-d:var(--secondary-d);  --teal-l:var(--secondary-l);
+  --acento:var(--secondary);
+
+  /* ── Tipografía ── */
+  --font:'Inter','Inter var',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;
+  --mono:ui-monospace,'SF Mono',Consolas,'Courier New',monospace;
+}
+
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:var(--font);background:var(--bg);color:var(--ink);font-size:14px;line-height:1.5;-webkit-font-smoothing:antialiased;overflow:hidden}
+button{font:inherit;cursor:pointer;border:none;background:none;color:inherit}
+input,select,textarea{font:inherit;color:inherit}
+svg{fill:none;stroke:currentColor;stroke-linecap:round;stroke-linejoin:round;stroke-width:1.9}
+:focus-visible{outline:2px solid var(--teal);outline-offset:2px}
+::-webkit-scrollbar{width:9px;height:9px}
+::-webkit-scrollbar-thumb{background:#CBD5E1;border-radius:5px}
+::-webkit-scrollbar-track{background:transparent}
+
+/* ══════════ PANTALLA DE CONEXIÓN ══════════ */
+#login{position:fixed;inset:0;background:linear-gradient(150deg,#12263A,#0B1826);
+  display:grid;place-items:center;z-index:100;overflow-y:auto;padding:24px}
+.lg{background:#fff;border-radius:14px;padding:26px 30px;width:100%;max-width:440px;
+  box-shadow:0 18px 50px rgba(0,0,0,.3)}
+.lg-h{display:flex;align-items:center;gap:11px;margin-bottom:5px}
+.lg-mark{width:38px;height:38px;border-radius:10px;background:linear-gradient(135deg,#19C9BE,var(--teal-d));
+  display:grid;place-items:center;flex:none}
+.lg-mark svg{width:21px;height:21px;stroke:#fff;stroke-width:2.1}
+.lg-h b{font-size:16px;font-weight:800;display:block;line-height:1.15}
+.lg-h small{font-size:10px;color:var(--ink-3);font-weight:700;letter-spacing:.07em;text-transform:uppercase}
+.lg-sub{font-size:12px;color:var(--ink-3);margin-bottom:18px}
+.lg-sec{font-size:10.5px;font-weight:800;letter-spacing:.09em;text-transform:uppercase;
+  color:var(--teal-d);margin:16px 0 9px;padding-bottom:5px;border-bottom:1px solid var(--line-2)}
+
+/* ── pie de la pantalla de inicio ── */
+.lg-pie{font-size:10.5px;color:var(--ink-3);text-align:center;margin-top:18px}
+.cred{font-size:10px;color:#7E93AC;font-family:var(--mono);display:block;margin-top:1px}
+
+/* ══════════ CAMPOS ══════════ */
+.f{margin-bottom:11px}
+.f label{display:block;font-size:11.5px;font-weight:600;margin-bottom:5px}
+.f label i{font-style:normal;color:var(--danger)}
+.fi{width:100%;padding:9px 12px;border:1px solid #CBD5E1;border-radius:7px;background:#fff;font-size:13px}
+.fi.mono{font-family:var(--mono);font-size:12.5px}
+.fi:focus{border-color:var(--teal);outline:none;box-shadow:0 0 0 3px rgba(18,161,154,.13)}
+.fi:disabled{background:var(--soft);color:var(--ink-3)}
+.hint{font-size:10.5px;color:var(--ink-3);margin-top:4px}
+.r2{display:grid;grid-template-columns:1fr 1fr;gap:11px}
+textarea.fi{resize:vertical;min-height:66px;line-height:1.5}
+
+/* ══════════ BOTONES ══════════ */
+.b{padding:9px 15px;border-radius:8px;font-size:12.5px;font-weight:600;display:inline-flex;
+  align-items:center;justify-content:center;gap:7px;border:1px solid transparent;transition:.14s;white-space:nowrap}
+.b svg{width:15px;height:15px}
+.b-teal{background:var(--teal);color:#fff}   .b-teal:hover:not(:disabled){background:#14B3AB}
+.b-dark{background:var(--ink);color:#fff}    .b-dark:hover:not(:disabled){background:#173A5C}
+.b-red{background:var(--danger);color:#fff}  .b-red:hover:not(:disabled){background:#F25757}
+.b-green{background:var(--ok);color:#fff}    .b-green:hover:not(:disabled){background:#14C68B}
+.b-gh{background:#fff;border-color:var(--line);color:var(--ink-2)} .b-gh:hover:not(:disabled){background:var(--soft)}
+.b-w{width:100%} .b-lg{padding:12px;font-size:13.5px} .b-sm{padding:6px 11px;font-size:11.5px}
+.b:disabled{opacity:.42;cursor:not-allowed}
+
+/* ══════════ ARMAZÓN ══════════ */
+#app{display:none;height:100vh;grid-template-columns:216px 1fr}
+#app.on{display:grid}
+
+.side{background:var(--nav);color:#fff;display:flex;flex-direction:column;overflow:hidden}
+.side-h{padding:16px 15px;display:flex;align-items:center;gap:10px;border-bottom:1px solid rgba(255,255,255,.07)}
+.side-h .m{width:31px;height:31px;border-radius:8px;background:linear-gradient(135deg,#19C9BE,var(--teal-d));
+  display:grid;place-items:center;flex:none}
+.side-h .m svg{width:17px;height:17px;stroke:#fff;stroke-width:2.1}
+.side-h b{font-size:12.5px;font-weight:800;display:block;line-height:1.2}
+.side-h small{font-size:9px;color:#7E93AC;font-weight:700;letter-spacing:.07em;text-transform:uppercase}
+
+.side-nav{flex:1;padding:11px 9px;overflow-y:auto}
+.nv{width:100%;display:flex;align-items:center;gap:10px;padding:9px 11px;border-radius:8px;
+  font-size:12.5px;color:#B6C6D6;margin-bottom:2px;text-align:left;transition:.12s}
+.nv svg{width:16px;height:16px;flex:none}
+.nv:hover{background:rgba(255,255,255,.06);color:#fff}
+.nv.on{background:var(--teal);color:#fff;font-weight:600}
+.nv .badge{margin-left:auto;background:var(--danger);color:#fff;font-size:9.5px;font-weight:700;
+  padding:1px 6px;border-radius:9px}
+.nv.on .badge{background:rgba(255,255,255,.25)}
+
+.side-f{padding:11px;border-top:1px solid rgba(255,255,255,.07)}
+.side-u{display:flex;align-items:center;gap:9px;padding:7px 4px;margin-bottom:7px}
+.side-u .av{width:31px;height:31px;border-radius:50%;background:var(--teal);display:grid;place-items:center;
+  font-size:11.5px;font-weight:700;flex:none}
+.side-u b{font-size:12px;display:block;line-height:1.25}
+.side-u small{font-size:10px;color:#7E93AC;font-family:var(--mono)}
+
+/* ══════════ ENCABEZADO ══════════ */
+.main{display:flex;flex-direction:column;overflow:hidden}
+.top{background:#fff;border-bottom:1px solid var(--line);padding:0 18px;height:56px;
+  display:flex;align-items:center;gap:14px;flex:none}
+.top h1{font-size:15.5px;font-weight:700;letter-spacing:-.015em}
+.top .sep{width:1px;height:24px;background:var(--line)}
+
+.est{display:flex;align-items:center;gap:7px;padding:6px 12px;border-radius:20px;
+  font-size:11.5px;font-weight:700;border:1px solid transparent}
+.est .d{width:7px;height:7px;border-radius:50%;background:currentColor}
+.est-ok{background:var(--ok-l);color:#067A55}
+.est-pausa{background:var(--warn-l);color:#96620A}
+.est-llamada{background:var(--live-l);color:#1D4ED8}
+.est-off{background:var(--off-l);color:#5B6B7D}
+
+.reg{display:flex;align-items:center;gap:6px;font-size:11px;font-weight:600;color:var(--ink-3)}
+.reg .d{width:7px;height:7px;border-radius:50%;background:var(--danger)}
+.reg.on .d{background:var(--ok)}
+.reg.re .d{background:var(--warn);animation:pulso 1s infinite}
+@keyframes pulso{50%{opacity:.35}}
+
+.cont{flex:1;overflow-y:auto;padding:16px 18px}
+.vista{display:none} .vista.on{display:block}
+
+/* ══════════ TARJETAS ══════════ */
+.c{background:#fff;border:1px solid var(--line);border-radius:10px;padding:16px}
+.c+.c{margin-top:14px}
+.c-h{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:3px}
+.c-h h2{font-size:14.5px;font-weight:700;letter-spacing:-.015em}
+.c-sub{font-size:11.5px;color:var(--ink-3);margin-bottom:13px}
+.rule{height:1px;background:var(--line-2);margin:13px 0}
+
+.rej{display:grid;gap:14px;align-items:start}
+.rej-3{grid-template-columns:340px 1fr 320px}
+.rej-2{grid-template-columns:1fr 1fr}
+.col{display:flex;flex-direction:column;gap:14px}
+@media(max-width:1400px){.rej-3{grid-template-columns:320px 1fr}}
+@media(max-width:1050px){.rej-3,.rej-2{grid-template-columns:1fr}}
+
+/* ══════════ SOFTPHONE ══════════ */
+.pan{background:#F3F8FB;border:1px solid #E3EDF3;border-radius:9px;padding:17px 12px;text-align:center}
+.pan.ring{background:#FFF9EE;border-color:#F5E3C0;animation:brillo 1.4s infinite}
+@keyframes brillo{50%{background:#FFF3DC}}
+.pan.live{background:#EEF7FF;border-color:#D7E8F7}
+.pan.cierre{background:#F5F0FF;border-color:#E0D5F5}
+.pan .lb{font-size:10.5px;font-weight:800;letter-spacing:.06em;color:var(--teal-d);margin-bottom:5px}
+.pan.ring .lb{color:#B4720A} .pan.live .lb{color:#1D4ED8} .pan.cierre .lb{color:#6B3FA0}
+.pan .num{font-size:20px;font-weight:700;font-family:var(--mono);letter-spacing:-.02em;min-height:26px}
+.pan .tm{font-size:27px;font-weight:700;font-variant-numeric:tabular-nums}
+.pan .sm{font-size:11.5px;color:var(--ink-2);margin-top:4px}
+.pan .bg{display:flex;gap:5px;justify-content:center;flex-wrap:wrap;margin-top:8px}
+.pan .bg:empty{display:none}
+
+.marca{position:relative;margin-top:12px}
+.marca-in{text-align:center;font-size:19px;letter-spacing:.04em;padding-right:40px;height:44px;font-family:var(--mono)}
+.marca-del{position:absolute;right:6px;top:50%;transform:translateY(-50%);width:31px;height:31px;
+  border-radius:7px;display:grid;place-items:center;color:var(--ink-3)}
+.marca-del:hover{background:var(--soft);color:var(--danger)}
+.marca-del svg{width:16px;height:16px}
+
+.tec{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-top:9px}
+.tk{background:var(--soft);border:1px solid transparent;border-radius:9px;padding:8px 0 6px;
+  display:flex;flex-direction:column;align-items:center;gap:1px;transition:.1s;user-select:none}
+.tk b{font-size:17px;font-weight:600;line-height:1;font-family:var(--mono)}
+.tk i{font-size:8px;font-style:normal;color:var(--ink-3);font-weight:700;letter-spacing:.08em;min-height:9px}
+.tk:hover{background:var(--teal-l);border-color:#BFE7E4}
+.tk:active,.tk.hit{background:var(--teal);color:#fff;transform:scale(.95)}
+.tk:active i,.tk.hit i{color:rgba(255,255,255,.8)}
+
+.ctrls{display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-top:11px}
+.ctrls.c4{grid-template-columns:repeat(4,1fr)}
+.ct{background:var(--soft);border-radius:8px;padding:9px 2px;display:flex;flex-direction:column;
+  align-items:center;gap:3px;font-size:9.5px;font-weight:600;color:var(--ink-2);border:1px solid transparent}
+.ct svg{width:16px;height:16px}
+.ct:hover:not(:disabled){background:var(--teal-l);border-color:#BFE7E4}
+.ct.on{background:var(--danger-l);border-color:#F7CFCF;color:#B02525}
+.ct:disabled{opacity:.4;cursor:not-allowed}
+
+.trbox{margin-top:10px;padding:12px;background:var(--soft);border:1px solid var(--line);border-radius:9px}
+.trbox.live{background:var(--live-l);border-color:#D2E3F7}
+.trbox-h{font-size:12.5px;font-weight:700;margin-bottom:8px}
+.trbox-p{font-size:10.5px;color:var(--ink-2);margin-top:8px;line-height:1.55}
+.trbox-p b{color:var(--ink)}
+
+/* ══════════ FICHA DE CONTACTO ══════════ */
+.ficha-v{text-align:center;padding:30px 16px;color:var(--ink-3)}
+.ficha-v svg{width:36px;height:36px;margin-bottom:9px;opacity:.4}
+.ficha-v p{font-size:12.5px}
+.fi-h{display:flex;align-items:center;gap:12px;margin-bottom:13px}
+.fi-av{width:46px;height:46px;border-radius:50%;background:var(--teal);color:#fff;display:grid;
+  place-items:center;font-size:16px;font-weight:700;flex:none}
+.fi-h b{font-size:15.5px;font-weight:700;display:block;letter-spacing:-.015em}
+.fi-h span{font-size:11.5px;color:var(--ink-3);font-family:var(--mono)}
+.kv{display:flex;justify-content:space-between;gap:10px;padding:7px 0;font-size:12.5px}
+.kv+.kv{border-top:1px solid var(--line-2)}
+.kv dt{color:var(--ink-3);flex:none}
+.kv dd{font-weight:600;text-align:right}
+.kv dd.mono{font-family:var(--mono);font-size:12px}
+
+/* ══════════ TIPIFICADOR ══════════ */
+.tip-bloq{text-align:center;padding:24px 16px;color:var(--ink-3);font-size:12.5px}
+.tip-cd{background:var(--warn-l);border:1px solid #F5DFB4;border-radius:8px;padding:9px 12px;
+  margin-bottom:12px;display:flex;align-items:center;gap:9px;font-size:12px;color:#8A5F0A}
+.tip-cd b{font-family:var(--mono);font-size:15px;color:#96620A}
+
+/* ══════════ ESTADOS / PAUSAS ══════════ */
+.pausas{display:grid;grid-template-columns:1fr 1fr;gap:7px}
+.pz{background:var(--soft);border:1px solid transparent;border-radius:8px;padding:11px 8px;
+  display:flex;flex-direction:column;align-items:center;gap:4px;font-size:11px;font-weight:600;color:var(--ink-2)}
+.pz svg{width:17px;height:17px}
+.pz:hover:not(:disabled){background:var(--warn-l);border-color:#F5DFB4;color:#96620A}
+.pz.on{background:var(--warn);border-color:var(--warn);color:#fff}
+.pz:disabled{opacity:.4;cursor:not-allowed}
+
+/* ══════════ TABLAS Y LISTAS ══════════ */
+.tb{width:100%;border-collapse:collapse;font-size:12.5px}
+.tb th{text-align:left;font-size:10.5px;font-weight:700;color:var(--ink-3);text-transform:uppercase;
+  letter-spacing:.05em;padding:0 9px 8px;border-bottom:1px solid var(--line)}
+.tb td{padding:9px;border-bottom:1px solid var(--line-2);vertical-align:middle}
+.tb tr:last-child td{border:none}
+.tb tr:hover td{background:var(--soft)}
+.tb .mono{font-family:var(--mono);font-size:12px}
+
+.hr2{display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid var(--line-2);font-size:12px}
+.hr2:last-child{border:none}
+.hr2 .ic{width:27px;height:27px;border-radius:7px;display:grid;place-items:center;flex:none}
+.hr2 .ic svg{width:13px;height:13px;stroke-width:2.1}
+.hr2.sal .ic{background:var(--teal-l);color:var(--teal-d)}
+.hr2.ent .ic{background:var(--live-l);color:#1D4ED8}
+.hr2.perd .ic{background:var(--danger-l);color:#B02525}
+.hr2 .bd{flex:1;min-width:0}
+.hr2 .bd b{font-family:var(--mono);font-weight:600;display:block;font-size:12.5px}
+.hr2 .bd span{font-size:10.5px;color:var(--ink-3);display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.hr2 .dur{font-family:var(--mono);font-size:11.5px;color:var(--ink-2);font-weight:600;flex:none}
+
+/* ══════════ ETIQUETAS ══════════ */
+.t{display:inline-flex;align-items:center;gap:5px;padding:3px 9px;border-radius:14px;font-size:10.5px;font-weight:700}
+.t .d{width:6px;height:6px;border-radius:50%;background:currentColor}
+.t.g{background:var(--ok-l);color:#067A55}   .t.a{background:var(--warn-l);color:#96620A}
+.t.r{background:var(--danger-l);color:#B02525} .t.b{background:var(--live-l);color:#1D4ED8}
+.t.o{background:var(--off-l);color:#5B6B7D}
+
+/* ══════════ AUDIO ══════════ */
+.vu{height:9px;background:var(--off-l);border-radius:5px;overflow:hidden}
+.vu-b{height:100%;width:0;border-radius:5px;
+  background:linear-gradient(90deg,var(--ok),#5FD8A0 60%,var(--warn));transition:width .07s linear}
+.vu-val{float:right;font-family:var(--mono);font-size:10.5px;color:var(--ink-3);font-weight:500}
+.rng{width:100%;accent-color:var(--teal);height:20px}
+.chk{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--ink-2);padding:5px 0;cursor:pointer}
+.chk input{accent-color:var(--teal);width:15px;height:15px}
+
+/* ══════════ TRAZA ══════════ */
+.log{background:#0F2233;border-radius:8px;padding:11px;font-family:var(--mono);font-size:10.5px;
+  line-height:1.6;height:320px;overflow-y:auto;color:#DCE6EF}
+.log .l{display:flex;gap:8px;padding:1px 0}
+.log .ts{color:#5B7A99;flex:none}
+.log .tx{word-break:break-word;white-space:pre-wrap}
+.tx-tx{color:#5FD8D0} .tx-rx{color:#8FD9A8} .tx-err{color:#FF8A8A}
+.tx-warn{color:#F0C674} .tx-info{color:#AEC4D8} .tx-ok{color:#7FE3B0;font-weight:600}
+
+/* ══════════ DIAGNÓSTICO ══════════ */
+.step{display:flex;gap:11px;padding:12px 0;border-bottom:1px solid var(--line-2)}
+.step:last-child{border:none}
+.step .n{width:25px;height:25px;border-radius:50%;background:var(--off-l);color:var(--ink-3);
+  display:grid;place-items:center;font-size:11px;font-weight:700;flex:none}
+.step.ok .n{background:var(--ok);color:#fff}
+.step.bad .n{background:var(--danger);color:#fff}
+.step.warn .n{background:var(--warn);color:#fff}
+.step.run .n{background:var(--live);color:#fff;animation:pulso 1s infinite}
+.step .bd{flex:1;min-width:0}
+.step .bd b{font-size:12.5px;font-weight:600;display:block}
+.step .bd p{font-size:11px;color:var(--ink-3);margin-top:2px}
+.step .res{font-size:11px;margin-top:6px;padding:8px 10px;border-radius:7px;font-family:var(--mono);
+  word-break:break-word;line-height:1.5;display:none}
+.step.ok .res{display:block;background:var(--ok-l);color:#067A55}
+.step.bad .res{display:block;background:var(--danger-l);color:#B02525}
+.step.warn .res{display:block;background:var(--warn-l);color:#96620A}
+.step.run .res{display:block;background:var(--live-l);color:#1D4ED8}
+
+/* ══════════ AVISOS ══════════ */
+.aviso{padding:10px 13px;border-radius:8px;font-size:12px;margin-bottom:13px;display:flex;gap:9px}
+.aviso svg{width:16px;height:16px;flex:none;margin-top:1px}
+.aviso b{display:block;margin-bottom:2px}
+.av-a{background:var(--warn-l);border:1px solid #F5DFB4;color:#8A5F0A}
+.av-r{background:var(--danger-l);border:1px solid #F7CFCF;color:#B02525}
+.av-b{background:var(--live-l);border:1px solid #D2E3F7;color:#1D4ED8}
+
+.vacio{text-align:center;padding:26px 16px;color:var(--ink-3);font-size:12.5px}
+.vacio svg{width:32px;height:32px;margin-bottom:8px;opacity:.4}
+
+
+/* ══════════ PESTAÑAS ══════════ */
+.tabs{display:flex;gap:4px;background:var(--off-l);padding:3px;border-radius:8px}
+.tab{flex:1;padding:6px 8px;border-radius:6px;font-size:11.5px;font-weight:600;color:var(--ink-2);transition:.12s}
+.tab:hover{color:var(--teal-d)}
+.tab.on{background:#fff;color:var(--teal-d);box-shadow:0 1px 3px rgba(0,0,0,.08)}
+
+/* ══════════ TARJETAS DE INDICADOR ══════════ */
+.tarjetas{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px;margin-bottom:14px}
+.kpi{background:#fff;border:1px solid var(--line);border-radius:10px;padding:14px 16px}
+.kpi .et{font-size:10.5px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--ink-3)}
+.kpi .vl{font-size:26px;font-weight:700;letter-spacing:-.02em;margin-top:3px;font-variant-numeric:tabular-nums}
+.kpi .sb{font-size:11px;color:var(--ink-3);margin-top:1px}
+.kpi.alerta{border-color:#F7CFCF;background:var(--danger-l)}
+.kpi.alerta .vl{color:#B02525}
+.kpi.bien{border-color:#BFE7DC;background:var(--ok-l)}
+.kpi.bien .vl{color:#067A55}
+
+/* ══════════ REPORTES ══════════ */
+.reps{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:10px}
+.rep{background:var(--soft);border:1px solid var(--line);border-radius:9px;padding:13px 14px;text-align:left;transition:.12s}
+.rep:hover{background:var(--teal-l);border-color:#BFE7E4}
+.rep b{display:block;font-size:12.5px;font-weight:700;margin-bottom:3px}
+.rep span{font-size:11px;color:var(--ink-3);line-height:1.5}
+
+/* ══════════ DISEÑADOR DE FORMULARIOS ══════════ */
+.fitem{display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--line-2)}
+.fitem:last-child{border:none}
+.fitem .bd{flex:1;min-width:0}
+.fitem .bd b{display:block;font-size:12.5px;font-weight:600}
+.fitem .bd span{font-size:10.5px;color:var(--ink-3)}
+.campo-ed{background:var(--soft);border:1px solid var(--line);border-radius:9px;padding:11px;margin-bottom:8px}
+.campo-ed .cab{display:flex;align-items:center;gap:8px;margin-bottom:8px}
+.campo-ed .cab .num{width:22px;height:22px;border-radius:50%;background:var(--teal);color:#fff;
+  display:grid;place-items:center;font-size:10.5px;font-weight:700;flex:none}
+.campo-ed .cab .esp{flex:1}
+.ico-b{width:26px;height:26px;border-radius:6px;display:grid;place-items:center;color:var(--ink-3)}
+.ico-b:hover{background:#fff;color:var(--danger)}
+.ico-b svg{width:14px;height:14px}
+.ico-b.mov:hover{color:var(--teal-d)}
+
+/* ══════════ FORMULARIO DEL AGENTE ══════════ */
+.cmp{margin-bottom:12px}
+.cmp label{display:block;font-size:12px;font-weight:600;margin-bottom:5px}
+.cmp label i{font-style:normal;color:var(--danger)}
+.pend{display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid var(--line-2);font-size:12px}
+.pend:last-child{border:none}
+.pend .ic{width:26px;height:26px;border-radius:7px;background:var(--warn-l);color:#96620A;
+  display:grid;place-items:center;flex:none}
+.pend .ic svg{width:13px;height:13px}
+.pend .bd{flex:1;min-width:0}
+.pend .bd b{display:block;font-size:12px;font-weight:600}
+.pend .bd span{font-size:10.5px;color:var(--ink-3)}
+
+/* ══════════ BARRA DE NIVEL ══════════ */
+.nivel{height:6px;background:var(--off-l);border-radius:4px;overflow:hidden;min-width:54px}
+.nivel i{display:block;height:100%;border-radius:4px;background:var(--ok)}
+.nivel i.med{background:var(--warn)}
+.nivel i.bajo{background:var(--danger)}
+
+/* ══════════ ALERTA DE LLAMADA ENTRANTE ══════════ */
+#flash{position:fixed;inset:0;pointer-events:none;z-index:90;display:none;
+  box-shadow:inset 0 0 0 4px var(--warn)}
+#flash.on{display:block;animation:flash 1.2s infinite}
+@keyframes flash{50%{box-shadow:inset 0 0 0 4px transparent}}
+
+/* ══════════ SEPARADOR DEL MENÚ ══════════ */
+.nv-sep{font-size:9px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;
+  color:#5B7A99;padding:14px 11px 5px}
+
+/* ══════════ PESTAÑAS ══════════ */
+.tabs{display:flex;gap:4px;background:var(--off-l);padding:3px;border-radius:8px}
+.tab{flex:1;padding:6px 8px;border-radius:6px;font-size:11.5px;font-weight:600;color:var(--ink-2)}
+.tab:hover{background:rgba(255,255,255,.6)}
+.tab.on{background:#fff;color:var(--teal-d);box-shadow:0 1px 3px rgba(0,0,0,.08)}
+
+/* ══════════ TARJETAS DE INDICADORES ══════════ */
+.tarjetas{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin-bottom:14px}
+.kpi{background:#fff;border:1px solid var(--line);border-radius:10px;padding:13px 15px}
+.kpi .et{font-size:10.5px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--ink-3)}
+.kpi .vl{font-size:25px;font-weight:700;letter-spacing:-.02em;margin-top:3px;font-variant-numeric:tabular-nums}
+.kpi .sub{font-size:10.5px;color:var(--ink-3);margin-top:1px}
+.kpi.alerta .vl{color:var(--danger)}
+.kpi.bien .vl{color:var(--ok)}
+
+/* ══════════ REPORTES ══════════ */
+.reps{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:10px}
+.rep{background:var(--soft);border:1px solid var(--line);border-radius:9px;padding:13px;text-align:left}
+.rep:hover{background:var(--teal-l);border-color:#BFE7E4}
+.rep b{display:block;font-size:12.5px;font-weight:600;margin-bottom:2px}
+.rep span{font-size:10.5px;color:var(--ink-3);line-height:1.45;display:block}
+
+/* ══════════ PENDIENTES DE ENVÍO ══════════ */
+.pend{padding:9px 0;border-bottom:1px solid var(--line-2)}
+.pend:last-child{border:none}
+.pend-h{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.pend-h b{font-size:12.5px;font-weight:600}
+.pend-m{font-size:10.5px;color:var(--ink-3);font-family:var(--mono)}
+
+/* ══════════ DISEÑADOR DE FORMULARIOS ══════════ */
+.fila-form{display:flex;align-items:center;justify-content:space-between;gap:10px;
+  padding:11px;border:1px solid var(--line);border-radius:9px;margin-bottom:7px;cursor:pointer}
+.fila-form:hover{background:var(--teal-l);border-color:#BFE7E4}
+.fila-form .bd b{display:block;font-size:12.5px;font-weight:600}
+.fila-form .bd span{font-size:10.5px;color:var(--ink-3)}
+
+.campo{background:var(--soft);border:1px solid var(--line);border-radius:9px;padding:9px;margin-bottom:7px}
+.campo-h{display:flex;align-items:center;gap:6px}
+.campo-n{width:20px;height:20px;border-radius:50%;background:var(--teal);color:#fff;
+  display:grid;place-items:center;font-size:10px;font-weight:700;flex:none}
+.campo-et{flex:1;min-width:70px;padding:6px 9px;font-size:12px}
+.campo-tp{width:108px;flex:none;padding:6px 7px;font-size:11.5px}
+.campo-b{width:24px;height:24px;border-radius:6px;background:#fff;border:1px solid var(--line);
+  color:var(--ink-2);font-size:13px;line-height:1;flex:none}
+.campo-b:hover{background:var(--teal-l);border-color:#BFE7E4}
+.campo-b.del:hover{background:var(--danger-l);border-color:#F7CFCF;color:var(--danger)}
+.campo-f{display:flex;align-items:center;gap:10px;margin-top:7px;flex-wrap:wrap}
+.campo-f .chk{padding:0;font-size:11.5px}
+.campo-op{flex:1;min-width:150px;padding:6px 9px;font-size:11.5px}
+
+
+/* ══════════ AÑADIDOS · reestructuración por perfiles ══════════ */
+
+/* Descripción del contacto en la ficha */
+.ficha-desc{background:var(--soft);border-left:3px solid var(--marca);
+  border-radius:0 7px 7px 0;padding:9px 12px;margin-top:11px;
+  font-size:12px;color:var(--ink-2);line-height:1.55}
+
+/* Gestiones anteriores del cliente */
+.gestion{padding:10px 0;border-bottom:1px solid var(--line-2)}
+.gestion:last-child{border:none}
+.gestion-h{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.gestion-h b{font-size:12.5px;font-weight:600}
+.gestion-f{font-size:10.5px;color:var(--ink-3);font-family:var(--mono)}
+.gestion-a{font-size:10.5px;color:var(--marca-d);font-weight:600}
+.gestion-o{font-size:11.5px;color:var(--ink-2);margin-top:3px;line-height:1.5}
+
+/* Rejilla de cuatro columnas para filtros */
+.rej-4{grid-template-columns:repeat(4,1fr)}
+@media(max-width:900px){.rej-4{grid-template-columns:1fr 1fr}}
+
+/* Lista de selección múltiple */
+.lista-multi{height:auto;padding:6px;font-size:12.5px}
+.lista-multi option{padding:5px 7px;border-radius:5px}
+
+/* Interruptor de rol y de módulos */
+.sw{display:inline-flex;align-items:center;gap:8px;cursor:pointer}
+.sw-p{width:38px;height:21px;border-radius:11px;background:var(--off-l);
+  border:1px solid var(--line);position:relative;transition:.18s;flex:none}
+.sw-p:after{content:'';position:absolute;top:2px;left:2px;width:15px;height:15px;
+  border-radius:50%;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.2);transition:.18s}
+.sw.on .sw-p{background:var(--marca);border-color:var(--marca)}
+.sw.on .sw-p:after{left:20px}
+.sw-t{font-size:12px;font-weight:600;color:var(--ink-2)}
+
+/* Fila de módulo */
+.modulo{display:flex;align-items:center;gap:13px;padding:13px 0;
+  border-bottom:1px solid var(--line-2)}
+.modulo:last-child{border:none}
+.modulo .bd{flex:1;min-width:0}
+.modulo .bd b{display:block;font-size:12.5px;font-weight:600}
+.modulo .bd span{font-size:11px;color:var(--ink-3);line-height:1.5;display:block;margin-top:2px}
+
+/* Selector de rol en la tabla de usuarios */
+.roles{display:inline-flex;gap:3px;background:var(--off-l);padding:2px;border-radius:7px}
+.rol-b{padding:4px 9px;border-radius:5px;font-size:10.5px;font-weight:600;color:var(--ink-2)}
+.rol-b:hover{background:rgba(255,255,255,.7)}
+.rol-b.on{background:#fff;color:var(--marca-d);box-shadow:0 1px 2px rgba(0,0,0,.09)}
+
+/* Fila de campaña y de marcación rápida */
+.fila-camp{display:flex;align-items:center;justify-content:space-between;gap:10px;
+  padding:11px;border:1px solid var(--line);border-radius:9px;margin-bottom:7px;cursor:pointer}
+.fila-camp:hover{background:var(--marca-l);border-color:#BFE4F3}
+.fila-camp .bd b{display:block;font-size:12.5px;font-weight:600}
+.fila-camp .bd span{font-size:10.5px;color:var(--ink-3)}
+
+.marc{display:flex;align-items:center;gap:7px;margin-bottom:6px}
+.marc input{flex:1;padding:6px 9px;font-size:12px}
+.marc .del{width:26px;height:26px;border-radius:6px;background:#fff;
+  border:1px solid var(--line);color:var(--ink-3);flex:none;font-size:14px;line-height:1}
+.marc .del:hover{background:var(--danger-l);border-color:#F5C6C9;color:var(--danger)}
+
+/* Nivel del diseñador de formularios */
+.nivel{border-left:2px solid var(--marca);padding-left:11px;margin-left:5px}
+.nivel-et{font-size:10px;font-weight:800;letter-spacing:.07em;text-transform:uppercase;
+  color:var(--marca-d);margin-bottom:5px}
+
+
+/* ══════════ TRANSFERENCIA A AGENTES ══════════ */
+.tabs-4 .tab{padding:6px 4px;font-size:10.5px}
+
+.ag-tr{width:100%;display:flex;align-items:center;justify-content:space-between;gap:9px;
+  padding:9px 11px;border:1px solid var(--line);border-radius:8px;margin-bottom:6px;
+  background:#fff;text-align:left;transition:.12s}
+.ag-tr:hover:not(:disabled){background:var(--secondary-l);border-color:#9FE4FA}
+.ag-tr.sel{background:var(--secondary-l);border-color:var(--secondary)}
+.ag-tr:disabled{opacity:.5;cursor:not-allowed}
+.ag-tr .bd b{display:block;font-size:12.5px;font-weight:600}
+.ag-tr .bd span{font-size:10.5px;color:var(--ink-3);font-family:var(--mono)}
+
+/* Etiqueta sobre la descripción de la ficha */
+.ficha-et{font-size:10px;font-weight:800;letter-spacing:.07em;text-transform:uppercase;
+  color:var(--ink-3);margin-top:12px;margin-bottom:4px}
+
+</style>
+
+</head>
+<body>
+<div id="flash"></div>
+
+<!-- ════════════════ INICIO DE SESIÓN ════════════════ -->
+<div id="login">
+  <div class="lg">
+    <div class="lg-h">
+      <div class="lg-mark"><svg viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 10 10"/><path d="M12 7a5 5 0 1 1-5 5"/></svg></div>
+      <div><b>BPM Consulting</b><small>Contact Center</small></div>
+    </div>
+    <p class="lg-sub">Inicia sesión para comenzar tu turno.</p>
+
+    <div class="f">
+      <label>Usuario</label>
+      <input class="fi" id="inUsuario" placeholder="Tu usuario" autocomplete="username">
+    </div>
+    <div class="f">
+      <label>Contraseña</label>
+      <input class="fi" id="inClave" type="password" placeholder="••••••••" autocomplete="current-password">
+    </div>
+
+    <div id="loginErr"></div>
+
+    <button class="b b-teal b-w b-lg" id="btnEntrar" style="margin-top:6px">Iniciar sesión</button>
+
+    <p class="lg-pie">BPM Consulting · Plataforma de Contact Center</p>
+  </div>
+</div>
+
+<!-- ════════════════ APLICACIÓN ════════════════ -->
+<div id="app">
+
+  <!-- ─────── BARRA LATERAL ─────── -->
+  <aside class="side">
+    <div class="side-h">
+      <div class="m"><svg viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 10 10"/><path d="M12 7a5 5 0 1 1-5 5"/></svg></div>
+      <div><b>BPM Consulting</b><small>Contact Center</small></div>
+    </div>
+
+    <!-- El menú se genera según los permisos del rol. Ver pantalla.js -->
+    <nav class="side-nav" id="nav"></nav>
+
+    <div class="side-f">
+      <div class="side-u">
+        <div class="av" id="uAv">—</div>
+        <div><b id="uNombre">—</b><small id="uExt">—</small></div>
+      </div>
+      <button class="b b-gh b-w b-sm" id="btnSalir">Cerrar sesión</button>
+    </div>
+  </aside>
+
+  <!-- ─────── PRINCIPAL ─────── -->
+  <div class="main">
+    <header class="top">
+      <h1 id="titulo">Escritorio</h1>
+      <div class="sep"></div>
+      <div class="est est-off" id="estAg"><span class="d"></span><span id="estAgTx">Sin conectar</span></div>
+      <div style="flex:1"></div>
+      <div class="reg" id="regTag"><span class="d"></span><span id="regTx">Sin registrar</span></div>
+    </header>
+
+    <div class="cont">
+
+      <!-- ══════ ESCRITORIO ══════ -->
+      <section class="vista on" data-v="escritorio">
+        <div class="rej rej-3">
+
+          <!-- Columna 1: softphone -->
+          <div class="col">
+            <div class="c">
+              <div class="c-h"><h2>Softphone</h2><span class="t o" id="spTag">En reposo</span></div>
+              <p class="c-sub" id="spSub">Marca un número o espera una llamada.</p>
+
+              <div class="pan" id="pan">
+                <div class="lb" id="panLb">EN REPOSO</div>
+                <div class="num" id="panNum">—</div>
+                <div class="sm" id="panSm">Sin llamada activa</div>
+                <div class="bg" id="panBg"></div>
+              </div>
+
+              <div class="marca">
+                <input class="fi marca-in" id="dest" placeholder="Número" autocomplete="off">
+                <button class="marca-del" id="btnBorrar" title="Borrar">
+                  <svg viewBox="0 0 24 24"><path d="M21 5H8l-6 7 6 7h13a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2z"/><path d="m18 9-6 6M12 9l6 6"/></svg>
+                </button>
+              </div>
+
+              <div class="tec" id="teclado">
+                <button class="tk" data-d="1"><b>1</b><i></i></button>
+                <button class="tk" data-d="2"><b>2</b><i>ABC</i></button>
+                <button class="tk" data-d="3"><b>3</b><i>DEF</i></button>
+                <button class="tk" data-d="4"><b>4</b><i>GHI</i></button>
+                <button class="tk" data-d="5"><b>5</b><i>JKL</i></button>
+                <button class="tk" data-d="6"><b>6</b><i>MNO</i></button>
+                <button class="tk" data-d="7"><b>7</b><i>PQRS</i></button>
+                <button class="tk" data-d="8"><b>8</b><i>TUV</i></button>
+                <button class="tk" data-d="9"><b>9</b><i>WXYZ</i></button>
+                <button class="tk" data-d="*"><b>*</b><i></i></button>
+                <button class="tk" data-d="0"><b>0</b><i>+</i></button>
+                <button class="tk" data-d="#"><b>#</b><i></i></button>
+              </div>
+
+              <button class="b b-green b-w b-lg" id="btnCall" style="margin-top:10px" disabled>
+                <svg viewBox="0 0 24 24"><path d="M22 16.9v3a2 2 0 0 1-2.2 2 19.8 19.8 0 0 1-8.6-3.1 19.5 19.5 0 0 1-6-6A19.8 19.8 0 0 1 2.1 4.2 2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7c.1.9.4 1.8.7 2.7a2 2 0 0 1-.5 2.1L8.1 9.7a16 16 0 0 0 6 6l1.2-1.2a2 2 0 0 1 2.1-.5c.9.3 1.8.6 2.7.7a2 2 0 0 1 1.7 2z"/></svg>
+                Llamar
+              </button>
+
+              <div class="ctrls" id="ringBox" style="display:none">
+                <button class="b b-green b-lg" id="btnAnswer">Contestar</button>
+                <button class="b b-red b-lg" id="btnReject">Rechazar</button>
+              </div>
+
+              <div class="ctrls c4" id="liveBox" style="display:none">
+                <button class="ct" id="btnMute">
+                  <svg viewBox="0 0 24 24"><path d="M12 2a3 3 0 0 0-3 3v6a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3zM19 10v1a7 7 0 0 1-14 0v-1M12 18v4"/></svg>
+                  Silenciar
+                </button>
+                <button class="ct" id="btnHold">
+                  <svg viewBox="0 0 24 24"><rect x="6" y="4" width="4" height="16" rx="1"/><rect x="14" y="4" width="4" height="16" rx="1"/></svg>
+                  Espera
+                </button>
+                <button class="ct" id="btnTransfer">
+                  <svg viewBox="0 0 24 24"><path d="M16 3h5v5"/><path d="M21 3 9 15"/><path d="M21 14v5a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5"/></svg>
+                  Transferir
+                </button>
+                <button class="ct" id="btnTeclado">
+                  <svg viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M8 8h.01M12 8h.01M16 8h.01M8 12h.01M12 12h.01M16 12h.01M8 16h.01M12 16h.01M16 16h.01"/></svg>
+                  Teclado
+                </button>
+              </div>
+
+              <button class="b b-red b-w b-lg" id="btnHangup" style="display:none;margin-top:8px">
+                <svg viewBox="0 0 24 24"><path d="M22 16.9v3a2 2 0 0 1-2.2 2 19.8 19.8 0 0 1-8.6-3.1 19.5 19.5 0 0 1-6-6A19.8 19.8 0 0 1 2.1 4.2 2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7c.1.9.4 1.8.7 2.7a2 2 0 0 1-.5 2.1L8.1 9.7a16 16 0 0 0 6 6l1.2-1.2a2 2 0 0 1 2.1-.5c.9.3 1.8.6 2.7.7a2 2 0 0 1 1.7 2z"/><path d="m2 2 20 20"/></svg>
+                Colgar
+              </button>
+
+              <div class="trbox" id="trBox" style="display:none">
+                <div class="trbox-h">Transferir la llamada</div>
+
+                <div class="tabs tabs-4" id="trTabs">
+                  <button class="tab on" data-t="campana">Campañas</button>
+                  <button class="tab" data-t="agente">Agentes</button>
+                  <button class="tab" data-t="extension">Extensiones</button>
+                  <button class="tab" data-t="externo">Externos</button>
+                </div>
+
+                <div class="f" id="trPanelExtension" style="display:none;margin-top:10px">
+                  <label>Extensión del compañero</label>
+                  <input class="fi mono" id="trExt" placeholder="4022" autocomplete="off">
+                  <div class="hint" id="trExtHint"></div>
+                </div>
+
+                <div class="f" id="trPanelCampana" style="margin-top:10px">
+                  <label>Campaña de destino</label>
+                  <select class="fi" id="trCampana"></select>
+                  <div class="hint">La llamada entra a la cola y la toma el primer agente libre.</div>
+                </div>
+
+                <div class="f" id="trPanelAgente" style="display:none;margin-top:10px">
+                  <label>Compañeros conectados</label>
+                  <div id="trAgentes"><div class="vacio">Cargando…</div></div>
+                </div>
+
+                <div class="f" id="trPanelExterno" style="display:none;margin-top:10px">
+                  <label>Celular o número fijo</label>
+                  <input class="fi mono" id="trExterno" placeholder="3105558812" autocomplete="off">
+                  <div class="hint" id="trExternoHint">Celular: 10 dígitos. Fijo: 60 + 8 dígitos.</div>
+                </div>
+
+                <div class="ctrls">
+                  <button class="b b-dark b-sm" id="btnTrCiega">Ciega</button>
+                  <button class="b b-teal b-sm" id="btnTrCons">Consultada</button>
+                </div>
+                <p class="trbox-p"><b>Ciega:</b> sales de inmediato.
+                  <b>Consultada:</b> hablas primero con el destino.</p>
+                <button class="b b-gh b-sm b-w" id="btnTrCancel" style="margin-top:7px">Cancelar</button>
+              </div>
+
+      <div class="trbox live" id="consBox" style="display:none">
+                <div class="trbox-h">Consulta con <span id="consNum">—</span></div>
+                <p class="trbox-p">El cliente está en espera escuchando la música.</p>
+                <div class="ctrls">
+                  <button class="b b-green b-sm" id="btnUnir">Unir llamadas</button>
+                  <button class="b b-gh b-sm" id="btnVolver">Cancelar</button>
+                </div>
+              </div>
+            </div>
+
+            <!-- Estado del agente -->
+            <div class="c">
+              <div class="c-h"><h2>Mi estado</h2></div>
+              <p class="c-sub">En pausa no se reciben llamadas entrantes.</p>
+              <button class="b b-green b-w" id="btnDisponible" style="margin-bottom:9px">Disponible</button>
+              <div class="pausas" id="pausas">
+                <button class="pz" data-p="Baño">
+                  <svg viewBox="0 0 24 24"><path d="M8 2v4M16 2v4M4 10h16v10a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V10z"/></svg>Baño</button>
+                <button class="pz" data-p="Almuerzo">
+                  <svg viewBox="0 0 24 24"><path d="M3 2v7a3 3 0 0 0 6 0V2M6 9v13M18 2c-2 0-3 3-3 6s1 4 3 4 3-1 3-4-1-6-3-6zM18 12v10"/></svg>Almuerzo</button>
+                <button class="pz" data-p="Break">
+                  <svg viewBox="0 0 24 24"><path d="M17 8h1a4 4 0 1 1 0 8h-1M3 8h14v9a4 4 0 0 1-4 4H7a4 4 0 0 1-4-4V8zM6 1v3M10 1v3M14 1v3"/></svg>Break</button>
+                <button class="pz" data-p="Retroalimentación">
+                  <svg viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>Retro</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Columna 2: tipificador -->
+          <div class="col">
+            <div class="c">
+              <div class="c-h"><h2>Tipificación</h2><span class="t o" id="tipTag">Sin llamada</span></div>
+              <p class="c-sub">Se habilita al terminar la llamada.</p>
+
+              <div id="tipBloq" class="tip-bloq">
+                No hay ninguna llamada por tipificar.
+              </div>
+
+              <div id="tipForm" style="display:none">
+                <div class="tip-cd" id="tipCd">
+                  <svg viewBox="0 0 24 24" style="width:16px;height:16px"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>
+                  <div>Tiempo de cierre restante: <b id="tipSeg">60</b> s</div>
+                </div>
+
+                <div class="f">
+                  <label>Resultado <i>*</i></label>
+                  <select class="fi" id="tipCat"><option value="">Selecciona…</option></select>
+                </div>
+                <div class="f">
+                  <label>Subcategoría</label>
+                  <select class="fi" id="tipSub" disabled><option value="">Selecciona el resultado primero</option></select>
+                </div>
+                <div class="f">
+                  <label>Observaciones</label>
+                  <textarea class="fi" id="tipObs" placeholder="Detalle de la gestión…"></textarea>
+                </div>
+                <div class="f">
+                  <label class="chk"><input type="checkbox" id="tipAgenda"> Requiere seguimiento</label>
+                </div>
+                <button class="b b-teal b-w b-lg" id="btnTipGuardar">Guardar tipificación</button>
+              </div>
+            </div>
+
+
+            <div class="c">
+              <div class="c-h"><h2>Formulario de la campaña</h2><span class="t o" id="formCampana">—</span></div>
+              <p class="c-sub">Se despliega según la campaña asignada.</p>
+              <div class="f">
+                <label>Formulario</label>
+                <select class="fi" id="selForm"><option value="">Selecciona…</option></select>
+              </div>
+              <div class="f">
+                <label>Número del contacto</label>
+                <input class="fi mono" id="formNum" placeholder="Se completa con la llamada">
+              </div>
+              <div id="formCampos"><div class="vacio">Selecciona un formulario.</div></div>
+              <button class="b b-teal b-w" id="btnFormGuardar" style="display:none">Guardar respuesta</button>
+            </div>
+
+            <div class="c">
+              <div class="c-h"><h2>Pendientes de envío</h2><span class="t o" id="pendN">0</span></div>
+              <p class="c-sub">Respuestas guardadas en este equipo que aún no se han enviado.</p>
+              <div id="listaPend"><div class="vacio">No hay respuestas pendientes.</div></div>
+              <button class="b b-gh b-w b-sm" id="btnSincronizar" style="margin-top:9px">Enviar pendientes</button>
+            </div>
+
+            <div class="c">
+              <div class="c-h"><h2>Llamadas de la sesión</h2><span class="t o" id="histN">0</span></div>
+              <p class="c-sub">Llamadas atendidas durante el turno, con su tipificación.</p>
+              <div id="histTabla"><div class="vacio">Todavía no hay llamadas.</div></div>
+            </div>
+          </div>
+
+          <!-- Columna 3: ficha -->
+          <div class="col">
+            <div class="c">
+              <div class="c-h"><h2>Ficha del contacto</h2></div>
+              <div id="ficha">
+                <div class="ficha-v">
+                  <svg viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9.5" cy="7" r="4"/></svg>
+                  <p>La ficha aparece al entrar una llamada.</p>
+                </div>
+              </div>
+            </div>
+
+            <div class="c" id="calidadCard" style="display:none">
+              <div class="c-h"><h2>Calidad</h2></div>
+              <p class="c-sub">Se actualiza cada 2 segundos.</p>
+              <dl class="kv"><dt>Ruta</dt><dd class="mono" id="stRoute">—</dd></dl>
+              <dl class="kv"><dt>Códec</dt><dd class="mono" id="stCodec">—</dd></dl>
+              <dl class="kv"><dt>Latencia</dt><dd class="mono" id="stRtt">—</dd></dl>
+              <dl class="kv"><dt>Pérdida</dt><dd class="mono" id="stLoss">—</dd></dl>
+              <dl class="kv"><dt>Jitter</dt><dd class="mono" id="stJit">—</dd></dl>
+              <dl class="kv"><dt>Recibido</dt><dd class="mono" id="stIn">—</dd></dl>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="vista" data-v="supervision">
+        <div class="tarjetas" id="kpis"></div>
+
+        <div class="rej rej-2">
+          <div class="c">
+            <div class="c-h"><h2>Llamadas en cola</h2><span class="t o" id="colaTag">—</span></div>
+            <p class="c-sub">Actualizado en tiempo real.</p>
+            <div id="tablaColas"></div>
+          </div>
+          <div class="c">
+            <div class="c-h"><h2>Estado de campañas</h2></div>
+            <p class="c-sub">Horarios de atención por campaña.</p>
+            <div id="tablaCampanas"></div>
+          </div>
+        </div>
+
+        <div class="c">
+          <div class="c-h"><h2>Agentes</h2>
+            <div style="display:flex;gap:8px;align-items:center">
+              <select class="fi b-sm" id="filtroCampana" style="width:auto;padding:5px 9px;font-size:11.5px"></select>
+              <span class="t o" id="agentesTag">—</span>
+            </div>
+          </div>
+          <p class="c-sub">Estado, permanencia y llamadas atendidas en el turno.</p>
+          <div id="tablaAgentes"></div>
+        </div>
+      </section>
+
+      <!-- ══════ REPORTES ══════ -->
+      <section class="vista" data-v="reportes">
+        <div class="c">
+          <div class="c-h"><h2>Reportes</h2></div>
+          <p class="c-sub">Selecciona un reporte para generarlo y descargarlo en CSV.</p>
+          <div class="reps" id="listaReportes"></div>
+        </div>
+        <div class="c" id="repResultado" style="display:none">
+          <div class="c-h"><h2 id="repTitulo">Resultado</h2>
+            <button class="b b-teal b-sm" id="btnDescargarCsv">Descargar CSV</button></div>
+          <p class="c-sub" id="repSub"></p>
+          <div id="repTabla"></div>
+        </div>
+      </section>
+
+      <!-- ══════ DISEÑADOR DE FORMULARIOS ══════ -->
+      <section class="vista" data-v="disenador">
+        <div class="rej rej-2">
+          <div class="c">
+            <div class="c-h"><h2>Formularios</h2>
+              <button class="b b-teal b-sm" id="btnFormNuevo">Crear</button></div>
+            <p class="c-sub">Formularios disponibles para los agentes según su campaña.</p>
+            <div id="listaForms"></div>
+          </div>
+
+          <div class="c" id="editorForm" style="display:none">
+            <div class="c-h"><h2 id="edTitulo">Nuevo formulario</h2></div>
+            <div class="r2">
+              <div class="f">
+                <label>Nombre <i>*</i></label>
+                <input class="fi" id="edNombre" placeholder="Datos de venta" autocomplete="off">
+              </div>
+              <div class="f">
+                <label>Campaña</label>
+                <select class="fi" id="edCampana"></select>
+              </div>
+            </div>
+            <label class="chk"><input type="checkbox" id="edActivo" checked> Activo (visible para el agente)</label>
+
+            <div class="rule"></div>
+            <div class="c-h"><h2 style="font-size:12.5px">Campos</h2>
+              <button class="b b-gh b-sm" id="btnCampoNuevo">Añadir campo</button></div>
+            <div id="edCampos"></div>
+
+            <div class="rule"></div>
+            <div class="ctrls">
+              <button class="b b-teal" id="btnFormSave">Guardar formulario</button>
+              <button class="b b-gh" id="btnFormCancel">Cancelar</button>
+            </div>
+            <button class="b b-red b-w b-sm" id="btnFormBorrar" style="margin-top:8px;display:none">Eliminar formulario</button>
+          </div>
+        </div>
+      </section>
+
+
+      <!-- ══════ GESTIÓN DE CAMPAÑAS · supervisor ══════ -->
+      <section class="vista" data-v="campanas">
+        <div class="c">
+          <div class="c-h"><h2>Horarios de campaña</h2></div>
+          <p class="c-sub">Al cerrar una campaña, las llamadas entrantes escuchan
+            el audio de fuera de horario.</p>
+          <div id="tablaHorarios"></div>
+        </div>
+
+        <div class="c">
+          <div class="c-h"><h2>Distribución de agentes</h2>
+            <button class="b b-teal b-sm" id="btnMover">Mover a campaña</button></div>
+          <p class="c-sub">Selecciona uno o varios agentes con Ctrl o Shift y
+            reasígnalos según el flujo de llamadas.</p>
+          <div class="rej rej-2">
+            <div class="f" style="margin:0">
+              <label>Agentes</label>
+              <select class="fi lista-multi" id="selAgentes" multiple size="9"></select>
+            </div>
+            <div class="f" style="margin:0">
+              <label>Campaña de destino</label>
+              <select class="fi" id="selDestino"></select>
+              <div class="hint">El cambio se aplica al terminar la llamada en curso.</div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ══════ GRABACIONES · supervisor ══════ -->
+      <section class="vista" data-v="grabaciones">
+        <div class="c">
+          <div class="c-h"><h2>Buscador de grabaciones</h2></div>
+          <p class="c-sub">Consulta las llamadas finalizadas y reproduce el audio.</p>
+          <div class="rej rej-4">
+            <div class="f"><label>Desde</label><input type="date" class="fi" id="grabDesde"></div>
+            <div class="f"><label>Hasta</label><input type="date" class="fi" id="grabHasta"></div>
+            <div class="f"><label>Agente</label><select class="fi" id="grabAgente"></select></div>
+            <div class="f"><label>Número</label><input class="fi mono" id="grabNumero" placeholder="Opcional"></div>
+          </div>
+          <button class="b b-teal b-sm" id="btnBuscarGrab">Buscar</button>
+        </div>
+
+        <div class="c">
+          <div class="c-h"><h2>Resultados</h2><span class="t o" id="grabN">0</span></div>
+          <div id="tablaGrabaciones"><div class="vacio">Realiza una búsqueda.</div></div>
+        </div>
+
+        <div class="c" id="reproductor" style="display:none">
+          <div class="c-h"><h2>Reproductor</h2>
+            <button class="b b-gh b-sm" id="btnDescargarGrab">Descargar</button></div>
+          <p class="c-sub" id="grabDetalle">—</p>
+          <audio id="audioGrab" controls style="width:100%"></audio>
+          <div class="hint" style="margin-top:8px">
+            Origen: <span class="mono" id="grabRuta">/var/spool/asterisk/monitor/</span>
+          </div>
+        </div>
+      </section>
+
+      <!-- ══════ ESCUCHA EN LÍNEA · supervisor ══════ -->
+      <section class="vista" data-v="escucha">
+        <div class="c">
+          <div class="c-h"><h2>Llamadas activas</h2><span class="t o" id="escN">0</span></div>
+          <p class="c-sub">Escucha en tiempo real sin que el agente ni el cliente
+            lo perciban.</p>
+          <div class="aviso av-a">
+            <svg viewBox="0 0 24 24"><path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/><path d="M12 9v4M12 17h.01"/></svg>
+            <div>La escucha queda registrada en la auditoría con el supervisor,
+              el agente y la hora.</div>
+          </div>
+          <div id="tablaEscucha"><div class="vacio">No hay llamadas activas.</div></div>
+        </div>
+
+        <div class="c" id="escuchaActiva" style="display:none">
+          <div class="c-h"><h2>Escuchando</h2><span class="t r"><span class="d"></span>En vivo</span></div>
+          <p class="c-sub" id="escDetalle">—</p>
+          <button class="b b-red b-w" id="btnDejarEscucha">Salir de la escucha</button>
+        </div>
+      </section>
+
+      <!-- ══════ CONFIGURACIÓN DE CAMPAÑAS · superadmin ══════ -->
+      <section class="vista" data-v="admcampanas">
+        <div class="rej rej-2">
+          <div class="c">
+            <div class="c-h"><h2>Campañas</h2>
+              <button class="b b-teal b-sm" id="btnCampNueva">Nueva</button></div>
+            <p class="c-sub">Ambientes lógicos independientes.</p>
+            <div id="listaCampanas"></div>
+          </div>
+
+          <div class="c" id="editorCampana" style="display:none">
+            <div class="c-h"><h2 id="campTitulo">Nueva campaña</h2></div>
+            <div class="f"><label>Nombre</label>
+              <input class="fi" id="campNombre" placeholder="Ventas Claro"></div>
+
+            <div class="f"><label>Tipo</label>
+              <div class="tabs" id="campTipo">
+                <button class="tab on" data-t="entrante">Entrante</button>
+                <button class="tab" data-t="saliente">Saliente</button>
+                <button class="tab" data-t="mixta">Mixta</button>
+              </div>
+            </div>
+
+            <div class="f" id="campDidBox">
+              <label>DID de entrada</label>
+              <input class="fi mono" id="campDid" placeholder="6017569094">
+              <div class="hint">Número público que enruta hacia esta campaña.</div>
+            </div>
+
+            <div class="f"><label>Cola en Asterisk</label>
+              <input class="fi mono" id="campCola" placeholder="ventas">
+              <div class="hint">Debe coincidir exactamente con el nombre de la cola.</div>
+            </div>
+
+            <div class="f"><label>Formulario asignado</label>
+              <select class="fi" id="campForm"></select>
+              <div class="hint">Se despliega automáticamente a los agentes de la campaña.</div>
+            </div>
+
+            <div class="rej rej-2">
+              <div class="f"><label>Apertura</label><input type="time" class="fi" id="campApertura" value="08:00"></div>
+              <div class="f"><label>Cierre</label><input type="time" class="fi" id="campCierre" value="18:00"></div>
+            </div>
+
+            <div class="rule"></div>
+            <div class="c-h"><h2 style="font-size:12.5px">Marcación rápida</h2>
+              <button class="b b-gh b-sm" id="btnMarcNueva">Añadir</button></div>
+            <p class="c-sub">Contactos recurrentes que el agente invoca sin digitar.</p>
+            <div id="listaMarcacion"></div>
+
+            <div class="rule"></div>
+            <div class="ctrls">
+              <button class="b b-teal b-sm" id="btnCampGuardar">Guardar</button>
+              <button class="b b-gh b-sm" id="btnCampCancel">Cancelar</button>
+            </div>
+            <button class="b b-red b-sm b-w" id="btnCampBorrar" style="margin-top:8px">Eliminar campaña</button>
+          </div>
+        </div>
+      </section>
+
+      <!-- ══════ USUARIOS Y ROLES · superadmin ══════ -->
+      <section class="vista" data-v="usuarios">
+        <div class="c">
+          <div class="c-h"><h2>Usuarios</h2>
+            <button class="b b-teal b-sm" id="btnUsrNuevo">Nuevo usuario</button></div>
+          <p class="c-sub">Cambia el rol con un clic. El usuario lo ve al volver a
+            iniciar sesión.</p>
+          <div id="tablaUsuarios"></div>
+        </div>
+
+        <div class="c" id="editorUsuario" style="display:none">
+          <div class="c-h"><h2 id="usrTitulo">Nuevo usuario</h2></div>
+          <div class="rej rej-2">
+            <div class="f"><label>Nombre</label><input class="fi" id="usrNombre"></div>
+            <div class="f"><label>Usuario</label><input class="fi mono" id="usrUsuario"></div>
+          </div>
+          <div class="rej rej-2">
+            <div class="f"><label>Extensión SIP</label><input class="fi mono" id="usrExt" placeholder="1003"></div>
+            <div class="f"><label>Campaña</label><select class="fi" id="usrCampana"></select></div>
+          </div>
+          <div class="f"><label>Rol</label>
+            <div class="tabs" id="usrRol">
+              <button class="tab on" data-t="agente">Agente</button>
+              <button class="tab" data-t="supervisor">Supervisor</button>
+              <button class="tab" data-t="admin">Superadmin</button>
+            </div>
+          </div>
+          <div class="ctrls">
+            <button class="b b-teal b-sm" id="btnUsrGuardar">Guardar</button>
+            <button class="b b-gh b-sm" id="btnUsrCancel">Cancelar</button>
+          </div>
+        </div>
+      </section>
+
+      <!-- ══════ MÓDULOS · superadmin ══════ -->
+      <section class="vista" data-v="modulos">
+        <div class="c">
+          <div class="c-h"><h2>Módulos del sistema</h2></div>
+          <p class="c-sub">Habilita o deshabilita módulos completos sin reinstalar
+            nada. Permite que la plataforma crezca por partes.</p>
+          <div id="listaModulos"></div>
+        </div>
+      </section>
+
+      <!-- ══════ AUDIO ══════ -->
+      <section class="vista" data-v="audio">
+        <div class="rej rej-2">
+          <div class="c">
+            <div class="c-h"><h2>Dispositivos</h2>
+              <button class="b b-gh b-sm" id="btnProbar">Probar parlante</button></div>
+            <p class="c-sub">Selecciona la diadema antes de empezar el turno.</p>
+            <div class="f">
+              <label>Micrófono</label>
+              <select class="fi" id="selMic"><option>Conecta la extensión primero</option></select>
+            </div>
+            <div class="f">
+              <label>Parlante o diadema</label>
+              <select class="fi" id="selOut"><option>Conecta la extensión primero</option></select>
+              <div class="hint" id="hintOut"></div>
+            </div>
+            <div class="f">
+              <label>Nivel de entrada <span class="vu-val" id="vuVal">—</span></label>
+              <div class="vu"><div class="vu-b" id="vuBar"></div></div>
+              <div class="hint">Habla: la barra debe moverse. Si no, la diadema no capta.</div>
+            </div>
+            <div class="f">
+              <label>Volumen <span class="vu-val" id="volVal">100%</span></label>
+              <input type="range" class="rng" id="rngVol" min="0" max="100" value="100">
+            </div>
+          </div>
+          <div class="c">
+            <div class="c-h"><h2>Preferencias</h2></div>
+            <p class="c-sub">Preferencias de este equipo.</p>
+            <label class="chk"><input type="checkbox" id="chkTono" checked> Reproducir tono de timbre</label>
+            <label class="chk"><input type="checkbox" id="chkAuto"> Contestación automática</label>
+            <label class="chk"><input type="checkbox" id="chkFlash" checked> Destellar la pantalla al entrar una llamada</label>
+            <div class="rule"></div>
+            <div class="f">
+              <label>Tiempo de cierre (ACW) <span class="vu-val" id="acwVal">60 s</span></label>
+              <input type="range" class="rng" id="rngAcw" min="15" max="180" step="15" value="60">
+              <div class="hint">Tiempo disponible para tipificar antes de la siguiente llamada.</div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ══════ DIAGNÓSTICO ══════ -->
+      <section class="vista" data-v="diag">
+        <div class="c">
+          <div class="c-h"><h2>Diagnóstico del entorno</h2>
+            <button class="b b-teal b-sm" id="btnDiag">Ejecutar</button></div>
+          <p class="c-sub">Verificación del entorno. Ejecútalo si la telefonía falla.</p>
+
+          <div class="step" id="s1"><div class="n">1</div><div class="bd">
+            <b>Contexto seguro</b><p>Sin esto el navegador bloquea el micrófono.</p>
+            <div class="res"></div></div></div>
+          <div class="step" id="s2"><div class="n">2</div><div class="bd">
+            <b>Micrófono</b><p>Permiso concedido y dispositivos disponibles.</p>
+            <div class="res"></div></div></div>
+          <div class="step" id="s3"><div class="n">3</div><div class="bd">
+            <b>WebSocket seguro</b><p>Aísla los problemas de red y certificado.</p>
+            <div class="res"></div></div></div>
+          <div class="step" id="s4"><div class="n">4</div><div class="bd">
+            <b>Registro SIP</b><p>La extensión admite transporte por WebSocket.</p>
+            <div class="res"></div></div></div>
+          <div class="step" id="s5"><div class="n">5</div><div class="bd">
+            <b>Candidatos ICE</b><p>Determina si hace falta un servidor TURN.</p>
+            <div class="res"></div></div></div>
+          <div class="step" id="s6"><div class="n">6</div><div class="bd">
+            <b>Llamada con audio</b><p>Se confirma con la primera llamada establecida.</p>
+            <div class="res"></div></div></div>
+        </div>
+      </section>
+
+      <!-- ══════ TRAZA ══════ -->
+      <section class="vista" data-v="traza">
+        <div class="c">
+          <div class="c-h"><h2>Traza SIP</h2><span class="t o" id="logN">0</span></div>
+          <p class="c-sub">Registro de la comunicación con la central telefónica.</p>
+          <div class="log" id="log"></div>
+          <div style="display:flex;gap:8px;align-items:center;margin-top:10px">
+            <label class="chk"><input type="checkbox" id="chkSeguir" checked> Seguir al final</label>
+            <div style="flex:1"></div>
+            <button class="b b-gh b-sm" id="btnLimpiar">Limpiar</button>
+            <button class="b b-gh b-sm" id="btnDescargar">Descargar</button>
+          </div>
+        </div>
+      </section>
+
+    </div>
+  </div>
+</div>
+
+<audio id="audioRemoto" autoplay style="display:none"></audio>
+
+<!-- ═══════════════════════════════════════════════════════════════
+     El orden importa:
+       1. config.js       ← el único archivo que hay que editar
+       2. sip.js          la librería SIP
+       3. servicio.js     usuarios, credenciales y datos
+       4. telefonia.js    el módulo de llamadas
+       5. supervision.js  el panel del supervisor
+       6. formularios.js  captura y diseñador
+       7. pantalla.js     la interfaz que lo une todo
+     ═══════════════════════════════════════════════════════════════ -->
+<script src="js/config.js"></script>
+<script src="lib/sip.js"></script>
+<script src="js/servicio.js"></script>
+<script src="js/telefonia.js"></script>
+<script src="js/supervision.js"></script>
+<script src="js/formularios.js"></script>
+<script src="js/administracion.js"></script>
+<script src="js/pantalla.js"></script>
+
+</body>
+</html>
