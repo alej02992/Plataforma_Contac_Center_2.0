@@ -541,7 +541,12 @@ const servicio = (() => {
     let datos = null;
     try { datos = await r.json(); } catch {}
 
-    if (r.status === 401 && ruta !== '/sesion') {
+    /* Un 401 significa "sesión no válida" en casi todas las rutas, pero
+       en el cambio de contraseña significa "la clave actual está mal".
+       Si se borrara el token ahí, el usuario perdería la sesión por
+       escribir mal su contraseña. */
+    const esCredencial = ruta === '/sesion' || ruta === '/sesion/clave';
+    if (r.status === 401 && !esCredencial) {
       borrarToken();
       throw new Error('La sesión expiró. Vuelve a iniciar sesión.');
     }
@@ -594,6 +599,17 @@ const servicio = (() => {
     return { ok: true, enviada: false };
   }
 
+  /** Cambia la contraseña del usuario que está en sesión. */
+  async function cambiarMiClave(claveActual, claveNueva) {
+    if (!hayApi()) {
+      /* Sin backend no hay dónde guardarla. Se avisa con claridad en
+         lugar de fingir que funcionó. */
+      throw new Error('Sin backend no se puede cambiar la contraseña.');
+    }
+    await api('PUT', '/sesion/clave', { claveActual, claveNueva });
+    return { ok: true };
+  }
+
   /** Inicio o fin de una pausa. */
   async function registrarPausa(tipo, entrando) {
     if (hayApi()) {
@@ -601,6 +617,160 @@ const servicio = (() => {
       catch (e) { return { ok: false, error: e.message }; }
     }
     return { ok: true };
+  }
+
+
+  /* ═══════════════════════════════════════════════════════════════
+     GESTIÓN DE USUARIOS CONTRA EL BACKEND
+
+     Con backend, estas funciones trabajan sobre MySQL. Sin él, sobre
+     la lista local de este archivo. Las pantallas no distinguen.
+     ═══════════════════════════════════════════════════════════════ */
+
+  /** Lista los usuarios. Siempre devuelve un arreglo. */
+  async function listarUsuarios() {
+    if (hayApi()) {
+      const filas = await api('GET', '/usuarios');
+      /* El backend devuelve rol_id; las pantallas esperan el nombre. */
+      return filas.map((u) => ({
+        id: u.id,
+        usuario: u.usuario,
+        nombre: u.nombre,
+        correo: u.correo,
+        rol: u.rol || ROL_POR_ID[u.rol_id] || 'agente',
+        rol_id: u.rol_id,
+        campana: u.campana || '',
+        campana_id: u.campana_id,
+        extension: u.extension || '',
+        activo: u.activo !== 0 && u.activo !== false,
+      }));
+    }
+    return USUARIOS.map((u) => ({ ...u }));
+  }
+
+  const ROL_POR_ID = { 1: 'agente', 2: 'supervisor', 3: 'admin' };
+  const ID_POR_ROL = { agente: 1, supervisor: 2, admin: 3 };
+
+  /** Crea o modifica un usuario. La contraseña NO se envía: al crear,
+      el backend asigna la temporal y exige el cambio en el primer
+      acceso. */
+  async function guardarUsuarioRemoto(datos) {
+    if (!hayApi()) return guardarUsuario(datos);
+
+    const cuerpo = {
+      usuario: datos.usuario,
+      nombre: datos.nombre,
+      correo: datos.correo || null,
+      rol_id: datos.rol_id || ID_POR_ROL[datos.rol] || 1,
+      campana_id: datos.campana_id || null,
+      extension: datos.extension || null,
+    };
+
+    try {
+      if (datos.id) {
+        await api('PUT', '/usuarios/' + datos.id, cuerpo);
+        return { ok: true, actualizado: true };
+      }
+      const r = await api('POST', '/usuarios', cuerpo);
+      return { ok: true, id: r.id, extensionCreada: r.extensionCreada, motivo: r.motivo };
+    } catch (e) {
+      return { ok: false, error: e.message };
+    }
+  }
+
+  /** Cambia el rol de un usuario. */
+  async function cambiarRolRemoto(id, usuario, rol) {
+    if (!hayApi()) return cambiarRol(usuario, rol);
+    try {
+      await api('PUT', '/usuarios/' + id, { rol_id: ID_POR_ROL[rol] });
+      return { ok: true };
+    } catch (e) {
+      return { ok: false, error: e.message };
+    }
+  }
+
+  /** Reasigna la campaña de un usuario. */
+  async function cambiarCampanaRemoto(id, usuario, campanaId, campana) {
+    if (!hayApi()) return cambiarCampana(usuario, campana);
+    try {
+      await api('PUT', '/usuarios/' + id, { campana_id: campanaId });
+      return { ok: true };
+    } catch (e) {
+      return { ok: false, error: e.message };
+    }
+  }
+
+  /** Devuelve al usuario a la contraseña temporal. */
+  async function restablecerClave(id) {
+    if (!hayApi()) return { ok: false, error: 'Requiere backend.' };
+    try {
+      const r = await api('POST', '/usuarios/' + id + '/restablecer');
+      return { ok: true, claveTemporal: r.claveTemporal };
+    } catch (e) {
+      return { ok: false, error: e.message };
+    }
+  }
+
+  /** Desactiva un usuario. No se borra, para no perder su historial. */
+  async function desactivarUsuario(id) {
+    if (!hayApi()) return { ok: false, error: 'Requiere backend.' };
+    try {
+      await api('DELETE', '/usuarios/' + id);
+      return { ok: true };
+    } catch (e) {
+      return { ok: false, error: e.message };
+    }
+  }
+
+  /** Crea o modifica una campaña. */
+  async function guardarCampana(datos) {
+    if (!hayApi()) return { ok: false, error: 'Requiere backend.' };
+    try {
+      if (datos.id) {
+        await api('PUT', '/campanas/' + datos.id, datos);
+        return { ok: true, actualizada: true };
+      }
+      const r = await api('POST', '/campanas', datos);
+      return { ok: true, id: r.id, colaCreada: r.colaCreada, motivo: r.motivo };
+    } catch (e) {
+      return { ok: false, error: e.message };
+    }
+  }
+
+  /** Desactiva una campaña. */
+  async function eliminarCampana(id) {
+    if (!hayApi()) return { ok: false, error: 'Requiere backend.' };
+    try {
+      await api('DELETE', '/campanas/' + id);
+      return { ok: true };
+    } catch (e) {
+      return { ok: false, error: e.message };
+    }
+  }
+
+  /** Abre o cierra la campaña. Sin backend opera sobre los datos
+      locales, para que la plataforma siga siendo usable. */
+  async function alternarHorario(id) {
+    if (!hayApi()) {
+      const c = CAMPANAS.find((x) => String(x.id) === String(id) || x.nombre === id);
+      if (!c) return { ok: false, error: 'Campaña no encontrada' };
+      c.abierta = !c.abierta;
+      return { ok: true, abierta: c.abierta };
+    }
+    try {
+      const r = await api('PUT', '/campanas/' + id + '/horario');
+      return { ok: true, abierta: r.abierta };
+    } catch (e) {
+      return { ok: false, error: e.message };
+    }
+  }
+
+  /** Campañas, desde el backend o locales. */
+  async function listarCampanas() {
+    if (hayApi()) {
+      try { return await api('GET', '/campanas'); } catch { /* cae al local */ }
+    }
+    return CAMPANAS.map((c) => ({ ...c }));
   }
 
   /* ── Gestión de usuarios ────────────────────────────────────────
@@ -651,7 +821,10 @@ const servicio = (() => {
     pendientes, encolarRespuesta, sincronizar,
     generarReporte, horarios, guardarHorarios,
     cambiarRol, cambiarCampana, guardarUsuario, marcacionRapidaDe,
-    hayApi, contactoPorTelefono, catalogoTipificacion,
+    listarUsuarios, guardarUsuarioRemoto, cambiarRolRemoto, cambiarCampanaRemoto,
+    restablecerClave, desactivarUsuario, listarCampanas,
+    guardarCampana, eliminarCampana, alternarHorario,
+    hayApi, contactoPorTelefono, catalogoTipificacion, cambiarMiClave,
     guardarTipificacion, registrarPausa,
     get usuarios()    { return USUARIOS.map((u) => ({ ...u })); },
     get campanas()    { return CAMPANAS.map((c) => ({ ...c })); },

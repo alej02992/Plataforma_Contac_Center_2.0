@@ -1,4 +1,3 @@
-
 /* ═══════════════════════════════════════════════════════════════════
    PANTALLA
    No conoce SIP.js. Solo reacciona a los eventos de `telefonia`.
@@ -989,15 +988,37 @@ async function entrar() {
     sesion = await servicio.autenticar(usuario, clave);
     log(`Sesión iniciada: ${sesion.nombre} (${sesion.rol})`, 'ok');
 
+    /* Primer acceso o contraseña restablecida: se pide el cambio ANTES
+       de registrar la extensión. No tiene sentido conectar la telefonía
+       de alguien que todavía no ha definido su contraseña, y así un
+       fallo de la central no le impide cambiarla. */
+    if (sesion.debeCambiarClave) {
+      ui.sesionPendiente = sesion;
+      $('login').style.display = 'none';
+      $('cambioClave').style.display = '';
+      $('ccActual').value = clave;      // ya la escribió al entrar
+      $('ccNueva').focus();
+      btn.disabled = false; btn.textContent = 'Iniciar sesión';
+      return;
+    }
+
     // 2. Pedir la credencial SIP temporal
-    try {
-      credencial = await servicio.credencialSip(sesion);
-      log(`Credencial SIP recibida para la extensión ${credencial.ext}`, 'ok');
-    } catch (e) {
-      if (e.message !== 'SIN_PBX') throw e;
-      // Sin central configurada: la sesión sigue, pero sin telefonía real
+    if (!sesion.extension) {
+      /* Supervisor y administrador no requieren softphone para su
+         operación diaria. Registrarlos sin extensión fallaría y les
+         impediría entrar. */
       simulado = true;
-      log('Central no configurada: la sesión inicia sin telefonía', 'warn');
+      log('Perfil sin extensión asignada: la sesión inicia sin softphone', 'info');
+    } else {
+      try {
+        credencial = await servicio.credencialSip(sesion);
+        log(`Credencial SIP recibida para la extensión ${credencial.ext}`, 'ok');
+      } catch (e) {
+        if (e.message !== 'SIN_PBX') throw e;
+        // Sin central configurada: la sesión sigue, pero sin telefonía real
+        simulado = true;
+        log('Central no configurada: la sesión inicia sin telefonía', 'warn');
+      }
     }
 
     // 3. Conectar el softphone con lo que entregó el servicio
@@ -1020,10 +1041,17 @@ async function entrar() {
   }
 
   // 4. Montar la aplicación
+  await montarAplicacion(sesion, simulado);
+  btn.disabled = false; btn.textContent = 'Iniciar sesión';
+}
+
+/* Arma el escritorio y lo muestra. Se llama al iniciar sesión y
+   también después del cambio obligatorio de contraseña. */
+async function montarAplicacion(sesion, simulado) {
   try {
     ui.sesion = sesion;
     $('uNombre').textContent = sesion.nombre;
-    $('uExt').innerHTML = `Ext. ${sesion.extension} · ${sesion.campana}` +
+    $('uExt').innerHTML = `Ext. ${sesion.extension || '—'} · ${sesion.campana || ''}` +
       `<span class="cred">${etiquetaRol(sesion.rol)}</span>`;
     $('uAv').textContent = sesion.nombre.split(' ').filter(Boolean).slice(0, 2)
       .map((x) => x[0]).join('').toUpperCase();
@@ -1035,12 +1063,12 @@ async function entrar() {
 
     // Solo cuando todo lo anterior salió bien se cambia de pantalla
     $('login').style.display = 'none';
+    $('cambioClave').style.display = 'none';
     $('app').classList.add('on');
   } catch (e) {
     console.error('BPM · error al montar la aplicación:', e);
     errorLogin('Error al abrir la plataforma: ' + e.message +
       '<br><br>Abre la consola con F12 para ver el detalle.');
-    btn.disabled = false; btn.textContent = 'Iniciar sesión';
     return;
   }
 
@@ -1055,8 +1083,6 @@ async function entrar() {
   if (simulado) {
     log('Central no configurada: el softphone trabaja sin telefonía real', 'warn');
   }
-
-  btn.disabled = false; btn.textContent = 'Iniciar sesión';
 }
 
 const ROLES = { agente: 'Agente', supervisor: 'Supervisor', admin: 'Administrador' };
@@ -1107,6 +1133,88 @@ $('listaReportes').addEventListener('click', (e) => {
 });
 
 $('btnDescargarCsv').addEventListener('click', () => supervision.descargarCsv());
+
+/* ═══════════ CAMBIO DE CONTRASEÑA ═══════════ */
+
+function errorCambio(msg) {
+  $('ccErr').innerHTML = msg
+    ? `<div class="aviso av-r" style="margin-bottom:0;align-items:flex-start"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg><div>${msg}</div></div>`
+    : '';
+}
+
+async function cambiarClave() {
+  const actual = $('ccActual').value;
+  const nueva  = $('ccNueva').value;
+  const repite = $('ccRepite').value;
+
+  if (!actual)             return errorCambio('Escribe tu contraseña actual.');
+  if (nueva.length < 8)    return errorCambio('La nueva contraseña debe tener al menos 8 caracteres.');
+  if (nueva !== repite)    return errorCambio('Las dos contraseñas nuevas no coinciden.');
+  if (nueva === actual)    return errorCambio('La nueva contraseña debe ser distinta de la actual.');
+  errorCambio('');
+
+  const btn = $('btnCambiarClave');
+  btn.disabled = true; btn.textContent = 'Guardando…';
+
+  try {
+    await servicio.cambiarMiClave(actual, nueva);
+  } catch (e) {
+    errorCambio(e.message || 'No se pudo cambiar la contraseña.');
+    btn.disabled = false; btn.textContent = 'Guardar y continuar';
+    return;
+  }
+
+  /* Cambiada: se entra con la sesión que quedó esperando. */
+  $('cambioClave').style.display = 'none';
+  $('ccActual').value = $('ccNueva').value = $('ccRepite').value = '';
+  btn.disabled = false; btn.textContent = 'Guardar y continuar';
+
+  /* Con la contraseña ya definida, se completa el inicio de sesión:
+     credencial SIP, softphone y escritorio. */
+  const sesion = ui.sesionPendiente;
+  ui.sesionPendiente = null;
+  if (!sesion) return;
+
+  sesion.debeCambiarClave = false;
+  let credencial, simulado = false;
+
+  /* Un usuario sin extensión no se registra en la central. Es el caso
+     del supervisor y del administrador, que no requieren softphone
+     para su operación diaria. Intentar registrarlos produciría un
+     fallo que además impediría el ingreso. */
+  if (!sesion.extension) {
+    simulado = true;
+    log('Este perfil no tiene extensión asignada: entra sin softphone', 'info');
+  } else {
+    try {
+      credencial = await servicio.credencialSip(sesion);
+    } catch (e) {
+      if (e.message !== 'SIN_PBX') {
+        log('No se pudo obtener la credencial SIP: ' + e.message, 'warn');
+      }
+      simulado = true;
+    }
+  }
+
+  try {
+    await telefonia.conectar({
+      nombre: sesion.nombre, campana: sesion.campana,
+      wss: credencial?.wss, dominio: credencial?.dominio,
+      ext: credencial?.ext ?? sesion.extension,
+      clave: credencial?.clave, ice: credencial?.ice,
+      volumen: 100, simulado,
+    });
+  } catch (e) {
+    log('No se pudo conectar el softphone: ' + e.message, 'warn');
+  }
+
+  await montarAplicacion(sesion, simulado);
+  aviso('Contraseña actualizada. Bienvenido.', 'av-b');
+}
+
+$('btnCambiarClave').addEventListener('click', cambiarClave);
+[$('ccActual'), $('ccNueva'), $('ccRepite')].forEach((el) =>
+  el.addEventListener('keydown', (e) => { if (e.key === 'Enter') cambiarClave(); }));
 
 /* ═══════════ ARRANQUE ═══════════ */
 

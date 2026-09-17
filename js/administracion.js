@@ -35,16 +35,8 @@ const administracion = (() => {
     { id:'g5', fecha:'07/09/2026 10:47', agente:'Ana Rodríguez',  numero:'3012298877', seg:263, camp:'Ventas',   tip:'Efectiva' },
   ];
 
-  let campanas = [
-    { id:'c1', nombre:'Ventas',    tipo:'mixta',    cola:'ventas',    did:'6017569094',
-      apertura:'08:00', cierre:'18:00', abierta:true,  formulario:'', marcacion:[{et:'Supervisora', n:'1002'}] },
-    { id:'c2', nombre:'Soporte',   tipo:'entrante', cola:'soporte',   did:'6013902000',
-      apertura:'07:00', cierre:'20:00', abierta:true,  formulario:'', marcacion:[] },
-    { id:'c3', nombre:'Cobranza',  tipo:'saliente', cola:'cobranza',  did:'',
-      apertura:'08:00', cierre:'17:00', abierta:false, formulario:'', marcacion:[] },
-    { id:'c4', nombre:'Retención', tipo:'mixta',    cola:'retencion', did:'6017569095',
-      apertura:'08:00', cierre:'18:00', abierta:true,  formulario:'', marcacion:[] },
-  ];
+  /* Se cargan del backend al abrir cada vista */
+  let campanas = [];
 
   let editandoCamp = null;
   let editandoUsr = null;
@@ -56,9 +48,10 @@ const administracion = (() => {
      SUPERVISOR · HORARIOS Y DISTRIBUCIÓN
      ═══════════════════════════════════════════════════════════════ */
 
-  function abrirCampanas() {
+  async function abrirCampanas() {
+    campanas = await servicio.listarCampanas();
     pintarHorarios();
-    pintarDistribucion();
+    await pintarDistribucion();
   }
 
   function pintarHorarios() {
@@ -67,19 +60,23 @@ const administracion = (() => {
       ${campanas.map((c) => `<tr>
         <td><b>${c.nombre}</b></td>
         <td>${c.tipo}</td>
-        <td class="mono">${c.apertura} – ${c.cierre}</td>
+        <td class="mono">${(c.hora_apertura||'').slice(0,5)} – ${(c.hora_cierre||'').slice(0,5)}</td>
         <td><span class="t ${c.abierta ? 'g' : 'r'}">${c.abierta ? 'Abierta' : 'Cerrada'}</span></td>
         <td><button class="b ${c.abierta ? 'b-red' : 'b-green'} b-sm"
               data-hor="${c.id}">${c.abierta ? 'Cerrar' : 'Abrir'}</button></td>
       </tr>`).join('')}</table>`;
   }
 
-  $$('tablaHorarios')?.addEventListener('click', (e) => {
+  $$('tablaHorarios')?.addEventListener('click', async (e) => {
     const b = e.target.closest('[data-hor]');
     if (!b) return;
-    const c = campanas.find((x) => x.id === b.dataset.hor);
+    const c = campanas.find((x) => String(x.id) === b.dataset.hor);
     if (!c) return;
-    c.abierta = !c.abierta;
+
+    const r = await servicio.alternarHorario(c.id);
+    if (!r.ok) { aviso(r.error, 'av-a'); return; }
+
+    c.abierta = r.abierta;
     pintarHorarios();
     aviso(c.abierta
       ? `Campaña ${c.nombre} abierta.`
@@ -87,26 +84,35 @@ const administracion = (() => {
       c.abierta ? 'av-b' : 'av-a');
   });
 
-  function pintarDistribucion() {
-    const agentes = servicio.usuarios.filter((u) => u.rol === 'agente');
+  async function pintarDistribucion() {
+    const todos = await servicio.listarUsuarios();
+    const agentes = todos.filter((u) => u.rol === 'agente' && u.activo !== false);
+
     $$('selAgentes').innerHTML = agentes.map((a) =>
-      `<option value="${a.usuario}">${a.nombre} · ${a.campana}</option>`).join('');
+      `<option value="${a.id ?? a.usuario}" data-usuario="${a.usuario}">${a.nombre} · ${a.campana || 'sin campaña'}</option>`).join('');
     $$('selDestino').innerHTML = campanas.map((c) =>
-      `<option value="${c.nombre}">${c.nombre}</option>`).join('');
+      `<option value="${c.id}">${c.nombre}</option>`).join('');
   }
 
-  $$('btnMover')?.addEventListener('click', () => {
+  $$('btnMover')?.addEventListener('click', async () => {
     const sel = [...$$('selAgentes').selectedOptions];
     if (!sel.length) { aviso('Selecciona al menos un agente.', 'av-a'); return; }
-    const destino = $$('selDestino').value;
 
-    sel.forEach((o) => {
-      const u = servicio.usuarios.find((x) => x.usuario === o.value);
-      if (u) servicio.cambiarCampana(u.usuario, destino);
-    });
+    const campanaId = Number($$('selDestino').value);
+    const destino = $$('selDestino').selectedOptions[0]?.textContent || '';
 
-    pintarDistribucion();
-    aviso(`${sel.length} agente(s) movido(s) a ${destino}.`, 'av-b');
+    let ok = 0;
+    for (const o of sel) {
+      const r = await servicio.cambiarCampanaRemoto(
+        Number(o.value) || null, o.dataset.usuario, campanaId, destino);
+      if (r.ok) ok++;
+    }
+
+    await pintarDistribucion();
+    aviso(ok === sel.length
+      ? `${ok} agente(s) movido(s) a ${destino}.`
+      : `Se movieron ${ok} de ${sel.length}. Revisa los que fallaron.`,
+      ok === sel.length ? 'av-b' : 'av-a');
   });
 
   /* ═══════════════════════════════════════════════════════════════
@@ -216,25 +222,41 @@ const administracion = (() => {
      SUPERADMIN · CONFIGURACIÓN DE CAMPAÑAS
      ═══════════════════════════════════════════════════════════════ */
 
-  function abrirAdmCampanas() {
+  async function abrirAdmCampanas() {
+    await recargarCampanas();
+    await llenarFormularios();
+  }
+
+  async function recargarCampanas() {
+    $$('listaCampanas').innerHTML = '<div class="vacio">Cargando…</div>';
+    try {
+      campanas = await servicio.listarCampanas();
+    } catch (e) {
+      $$('listaCampanas').innerHTML =
+        `<div class="aviso av-r" style="margin:0"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg><div>No se pudieron cargar: ${e.message}</div></div>`;
+      return;
+    }
     pintarListaCampanas();
-    llenarFormularios();
   }
 
   function pintarListaCampanas() {
+    if (!campanas.length) {
+      $$('listaCampanas').innerHTML = '<div class="vacio">No hay campañas registradas.</div>';
+      return;
+    }
     $$('listaCampanas').innerHTML = campanas.map((c) => `
       <div class="fila-camp" data-camp="${c.id}">
         <div class="bd">
           <b>${c.nombre}</b>
-          <span>${c.tipo}${c.did ? ' · DID ' + c.did : ''} · cola ${c.cola}</span>
+          <span>${c.tipo}${c.did ? ' · DID ' + c.did : ''} · cola ${c.cola_asterisk || '—'}</span>
         </div>
         <span class="t ${c.abierta ? 'g' : 'o'}">${c.abierta ? 'Abierta' : 'Cerrada'}</span>
       </div>`).join('');
   }
 
-  function llenarFormularios() {
-    const fs = (typeof formularios !== 'undefined' && servicio.formularios)
-      ? servicio.formularios() : [];
+  async function llenarFormularios() {
+    let fs = [];
+    try { fs = servicio.formularios ? servicio.formularios() : []; } catch {}
     $$('campForm').innerHTML = '<option value="">— Sin formulario —</option>' +
       fs.map((f) => `<option value="${f.id}">${f.nombre}</option>`).join('');
   }
@@ -242,30 +264,34 @@ const administracion = (() => {
   $$('listaCampanas')?.addEventListener('click', (e) => {
     const f = e.target.closest('[data-camp]');
     if (!f) return;
-    const c = campanas.find((x) => x.id === f.dataset.camp);
-    if (c) editarCampana(JSON.parse(JSON.stringify(c)));
+    const c = campanas.find((x) => String(x.id) === f.dataset.camp);
+    if (c) editarCampana({ ...c });
   });
 
   $$('btnCampNueva')?.addEventListener('click', () => {
-    editarCampana({ id:'c'+Date.now(), nombre:'', tipo:'entrante', cola:'', did:'',
-      apertura:'08:00', cierre:'18:00', abierta:true, formulario:'', marcacion:[] });
+    editarCampana({ nombre:'', tipo:'entrante', cola_asterisk:'', did:'',
+      hora_apertura:'08:00', hora_cierre:'18:00', acw_segundos:60, marcacion:[] });
   });
 
   function editarCampana(c) {
     editandoCamp = c;
-    llenarFormularios();
     $$('editorCampana').style.display = '';
     $$('campTitulo').textContent = c.nombre || 'Nueva campaña';
-    $$('campNombre').value = c.nombre;
-    $$('campCola').value = c.cola;
+    $$('campNombre').value = c.nombre || '';
+    $$('campCola').value = c.cola_asterisk || '';
     $$('campDid').value = c.did || '';
-    $$('campApertura').value = c.apertura;
-    $$('campCierre').value = c.cierre;
-    $$('campForm').value = c.formulario || '';
+    $$('campApertura').value = (c.hora_apertura || '08:00').slice(0, 5);
+    $$('campCierre').value = (c.hora_cierre || '18:00').slice(0, 5);
+    $$('campForm').value = c.formulario_id || '';
+    $$('campCola').disabled = !!c.id;      // la cola no se renombra
+
+    c.tipo = c.tipo || 'entrante';
     document.querySelectorAll('#campTipo .tab').forEach((t) =>
       t.classList.toggle('on', t.dataset.t === c.tipo));
     $$('campDidBox').style.display = c.tipo === 'saliente' ? 'none' : '';
-    $$('btnCampBorrar').style.display = campanas.some((x) => x.id === c.id) ? '' : 'none';
+    $$('btnCampBorrar').style.display = c.id ? '' : 'none';
+
+    c.marcacion = c.marcacion || [];
     pintarMarcacion();
   }
 
@@ -279,7 +305,7 @@ const administracion = (() => {
   });
 
   function pintarMarcacion() {
-    const m = editandoCamp.marcacion || [];
+    const m = editandoCamp?.marcacion || [];
     $$('listaMarcacion').innerHTML = !m.length
       ? '<div class="vacio">Sin contactos de marcación rápida.</div>'
       : m.map((x, i) => `
@@ -310,28 +336,50 @@ const administracion = (() => {
     pintarMarcacion();
   });
 
-  $$('btnCampGuardar')?.addEventListener('click', () => {
+  $$('btnCampGuardar')?.addEventListener('click', async () => {
     if (!editandoCamp) return;
-    editandoCamp.nombre = $$('campNombre').value.trim();
-    editandoCamp.cola = $$('campCola').value.trim();
-    editandoCamp.did = $$('campDid').value.trim();
-    editandoCamp.apertura = $$('campApertura').value;
-    editandoCamp.cierre = $$('campCierre').value;
-    editandoCamp.formulario = $$('campForm').value;
 
-    if (!editandoCamp.nombre) { aviso('La campaña necesita un nombre.', 'av-a'); return; }
-    if (!editandoCamp.cola) { aviso('Indica la cola de Asterisk.', 'av-a'); return; }
-    if (editandoCamp.tipo !== 'saliente' && !editandoCamp.did) {
+    const datos = {
+      id: editandoCamp.id,
+      nombre: $$('campNombre').value.trim(),
+      tipo: editandoCamp.tipo,
+      cola_asterisk: $$('campCola').value.trim(),
+      did: $$('campDid').value.trim(),
+      formulario_id: Number($$('campForm').value) || null,
+      hora_apertura: $$('campApertura').value + ':00',
+      hora_cierre: $$('campCierre').value + ':00',
+      acw_segundos: 60,
+    };
+
+    if (!datos.nombre) { aviso('La campaña necesita un nombre.', 'av-a'); return; }
+    if (!datos.cola_asterisk) { aviso('Indica la cola de Asterisk.', 'av-a'); return; }
+    if (!/^[a-z0-9_-]+$/i.test(datos.cola_asterisk)) {
+      aviso('La cola solo admite letras, números, guion y guion bajo.', 'av-a'); return;
+    }
+    if (datos.tipo !== 'saliente' && !datos.did) {
       aviso('Una campaña de entrada necesita un DID.', 'av-a'); return;
     }
 
-    const i = campanas.findIndex((x) => x.id === editandoCamp.id);
-    if (i >= 0) campanas[i] = editandoCamp; else campanas.push(editandoCamp);
+    const btn = $$('btnCampGuardar');
+    btn.disabled = true; btn.textContent = 'Guardando…';
+    const r = await servicio.guardarCampana(datos);
+    btn.disabled = false; btn.textContent = 'Guardar';
 
-    pintarListaCampanas();
+    if (!r.ok) { aviso(r.error, 'av-a'); return; }
+
+    await recargarCampanas();
     $$('editorCampana').style.display = 'none';
     editandoCamp = null;
-    aviso('Campaña guardada.', 'av-b');
+
+    if (r.actualizada) { aviso('Campaña actualizada.', 'av-b'); return; }
+
+    let msg = 'Campaña creada.';
+    if (r.colaCreada === false) {
+      msg += ` La cola <b>${datos.cola_asterisk}</b> debe crearse manualmente en la central.`;
+    } else {
+      msg += ` Su cola <b>${datos.cola_asterisk}</b> quedó creada en la central.`;
+    }
+    aviso(msg, 'av-b');
   });
 
   $$('btnCampCancel')?.addEventListener('click', () => {
@@ -339,13 +387,18 @@ const administracion = (() => {
     editandoCamp = null;
   });
 
-  $$('btnCampBorrar')?.addEventListener('click', () => {
-    if (!editandoCamp) return;
-    campanas = campanas.filter((x) => x.id !== editandoCamp.id);
-    pintarListaCampanas();
+  $$('btnCampBorrar')?.addEventListener('click', async () => {
+    if (!editandoCamp?.id) return;
+    if (!confirm(`¿Desactivar la campaña ${editandoCamp.nombre}?\n\n` +
+                 'No se elimina: sus llamadas se conservan para los reportes.')) return;
+
+    const r = await servicio.eliminarCampana(editandoCamp.id);
+    if (!r.ok) { aviso(r.error, 'av-a'); return; }
+
+    await recargarCampanas();
     $$('editorCampana').style.display = 'none';
     editandoCamp = null;
-    aviso('Campaña eliminada.', 'av-b');
+    aviso('Campaña desactivada.', 'av-b');
   });
 
   /* ═══════════════════════════════════════════════════════════════
@@ -354,61 +407,104 @@ const administracion = (() => {
 
   const ROL_ET = { agente:'Agente', supervisor:'Supervisor', admin:'Superadmin' };
 
-  function abrirUsuarios() {
-    $$('usrCampana').innerHTML = campanas.map((c) => `<option>${c.nombre}</option>`).join('') +
-      '<option>Todas</option>';
+  let usuarios = [];        // lo que se está mostrando
+
+  async function abrirUsuarios() {
+    const cs = await servicio.listarCampanas();
+    $$('usrCampana').innerHTML = cs.map((c) =>
+      `<option value="${c.id ?? ''}">${c.nombre}</option>`).join('');
+    await recargarUsuarios();
+  }
+
+  async function recargarUsuarios() {
+    $$('tablaUsuarios').innerHTML = '<div class="vacio">Cargando…</div>';
+    try {
+      usuarios = await servicio.listarUsuarios();
+    } catch (e) {
+      $$('tablaUsuarios').innerHTML =
+        `<div class="aviso av-r" style="margin:0"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg><div>No se pudo cargar la lista: ${e.message}</div></div>`;
+      return;
+    }
     pintarUsuarios();
   }
 
   function pintarUsuarios() {
+    if (!usuarios.length) {
+      $$('tablaUsuarios').innerHTML = '<div class="vacio">No hay usuarios registrados.</div>';
+      return;
+    }
     $$('tablaUsuarios').innerHTML = `<table class="tb">
       <tr><th>Nombre</th><th>Usuario</th><th>Extensión</th><th>Campaña</th><th>Rol</th><th></th></tr>
-      ${servicio.usuarios.map((u) => `<tr>
-        <td><b>${u.nombre}</b></td>
+      ${usuarios.map((u) => `<tr${u.activo === false ? ' style="opacity:.5"' : ''}>
+        <td><b>${u.nombre}</b>${u.activo === false ? ' <span class="t o">Inactivo</span>' : ''}</td>
         <td class="mono">${u.usuario}</td>
         <td class="mono">${u.extension || '—'}</td>
-        <td>${u.campana}</td>
+        <td>${u.campana || '—'}</td>
         <td>
-          <div class="roles" data-usuario="${u.usuario}">
+          <div class="roles" data-usuario="${u.usuario}" data-id="${u.id ?? ''}">
             ${Object.keys(ROL_ET).map((r) =>
               `<button class="rol-b ${u.rol === r ? 'on' : ''}" data-rol="${r}">${ROL_ET[r]}</button>`).join('')}
           </div>
         </td>
-        <td><button class="b b-gh b-sm" data-editar="${u.usuario}">Editar</button></td>
+        <td style="white-space:nowrap">
+          <button class="b b-gh b-sm" data-editar="${u.usuario}">Editar</button>
+          <button class="b b-gh b-sm" data-rest="${u.id ?? ''}" title="Devolver a la contraseña temporal">Restablecer</button>
+        </td>
       </tr>`).join('')}</table>`;
   }
 
-  /* Cambio de rol de un solo clic */
-  $$('tablaUsuarios')?.addEventListener('click', (e) => {
+  $$('tablaUsuarios')?.addEventListener('click', async (e) => {
+    /* Cambio de rol de un solo clic */
     const rb = e.target.closest('[data-rol]');
     if (rb) {
-      const usuario = rb.closest('[data-usuario]').dataset.usuario;
-      servicio.cambiarRol(usuario, rb.dataset.rol);
-      pintarUsuarios();
+      const caja = rb.closest('[data-usuario]');
+      const r = await servicio.cambiarRolRemoto(
+        Number(caja.dataset.id) || null, caja.dataset.usuario, rb.dataset.rol);
+      if (!r.ok) { aviso(r.error, 'av-a'); return; }
+      await recargarUsuarios();
       aviso(`Rol cambiado a ${ROL_ET[rb.dataset.rol]}. Se aplica al volver a iniciar sesión.`, 'av-b');
       return;
     }
+
+    /* Restablecer contraseña */
+    const rest = e.target.closest('[data-rest]');
+    if (rest) {
+      const u = usuarios.find((x) => String(x.id) === rest.dataset.rest);
+      if (!confirm(`¿Restablecer la contraseña de ${u?.nombre || 'este usuario'}?\n\n` +
+                   'Volverá a la contraseña temporal y se le exigirá cambiarla al entrar.')) return;
+      const r = await servicio.restablecerClave(rest.dataset.rest);
+      if (!r.ok) { aviso(r.error, 'av-a'); return; }
+      aviso(`Contraseña restablecida. Entrégale: ${r.claveTemporal}`, 'av-b');
+      return;
+    }
+
+    /* Editar */
     const eb = e.target.closest('[data-editar]');
     if (eb) {
-      const u = servicio.usuarios.find((x) => x.usuario === eb.dataset.editar);
+      const u = usuarios.find((x) => x.usuario === eb.dataset.editar);
       if (u) editarUsuario({ ...u });
     }
   });
 
   $$('btnUsrNuevo')?.addEventListener('click', () => {
-    editarUsuario({ usuario:'', nombre:'', rol:'agente', extension:'', campana:campanas[0]?.nombre || '' });
+    editarUsuario({ usuario:'', nombre:'', rol:'agente', extension:'', campana_id:null });
   });
 
   function editarUsuario(u) {
     editandoUsr = u;
     $$('editorUsuario').style.display = '';
     $$('usrTitulo').textContent = u.nombre || 'Nuevo usuario';
-    $$('usrNombre').value = u.nombre;
-    $$('usrUsuario').value = u.usuario;
+    $$('usrNombre').value = u.nombre || '';
+    $$('usrUsuario').value = u.usuario || '';
+    $$('usrUsuario').disabled = !!u.id;       // el usuario no se renombra
     $$('usrExt').value = u.extension || '';
-    $$('usrCampana').value = u.campana;
+    if (u.campana_id != null) $$('usrCampana').value = String(u.campana_id);
     document.querySelectorAll('#usrRol .tab').forEach((t) =>
       t.classList.toggle('on', t.dataset.t === u.rol));
+
+    /* Al crear, se avisa qué contraseña se le entregará */
+    const nota = $$('usrNotaClave');
+    if (nota) nota.style.display = u.id ? 'none' : '';
   }
 
   $$('usrRol')?.addEventListener('click', (e) => {
@@ -418,31 +514,61 @@ const administracion = (() => {
     document.querySelectorAll('#usrRol .tab').forEach((x) => x.classList.toggle('on', x === t));
   });
 
-  $$('btnUsrGuardar')?.addEventListener('click', () => {
+  $$('btnUsrGuardar')?.addEventListener('click', async () => {
     if (!editandoUsr) return;
+
     const datos = {
+      id: editandoUsr.id,
       usuario: $$('usrUsuario').value.trim().toLowerCase(),
       nombre: $$('usrNombre').value.trim(),
       extension: $$('usrExt').value.trim(),
-      campana: $$('usrCampana').value,
+      campana_id: Number($$('usrCampana').value) || null,
+      campana: $$('usrCampana').selectedOptions[0]?.textContent || '',
       rol: editandoUsr.rol,
     };
+
     if (!datos.usuario || !datos.nombre) {
       aviso('El usuario necesita nombre y nombre de usuario.', 'av-a'); return;
     }
-    const r = servicio.guardarUsuario(datos);
+    if (datos.extension && !/^\d{3,6}$/.test(datos.extension)) {
+      aviso('La extensión debe ser un número de 3 a 6 dígitos.', 'av-a'); return;
+    }
+
+    const btn = $$('btnUsrGuardar');
+    btn.disabled = true; btn.textContent = 'Guardando…';
+
+    const r = await servicio.guardarUsuarioRemoto(datos);
+
+    btn.disabled = false; btn.textContent = 'Guardar';
     if (!r.ok) { aviso(r.error, 'av-a'); return; }
 
-    pintarUsuarios();
+    await recargarUsuarios();
     $$('editorUsuario').style.display = 'none';
     editandoUsr = null;
-    aviso('Usuario guardado.', 'av-b');
+
+    if (r.actualizado) {
+      aviso('Usuario actualizado.', 'av-b');
+    } else {
+      /* Al crear se informa la contraseña temporal y el estado de la
+         extensión en la central. */
+      let msg = `Usuario creado. Entrégale la contraseña temporal: <b>${CLAVE_TEMPORAL}</b>. ` +
+                'Se le pedirá cambiarla al entrar.';
+      if (r.extensionCreada === false && datos.extension) {
+        msg += `<br><br>La extensión <b>${datos.extension}</b> debe crearse manualmente ` +
+               'en la central telefónica.';
+      }
+      aviso(msg, 'av-b');
+    }
   });
 
   $$('btnUsrCancel')?.addEventListener('click', () => {
     $$('editorUsuario').style.display = 'none';
     editandoUsr = null;
   });
+
+  /* La contraseña temporal la define el backend. Este valor es solo
+     informativo para el mensaje que ve el administrador. */
+  const CLAVE_TEMPORAL = 'BpmTemp2026#';
 
   /* ═══════════════════════════════════════════════════════════════
      SUPERADMIN · MÓDULOS
