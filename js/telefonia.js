@@ -550,10 +550,23 @@ const telefonia = (() => {
     }, 2200);
   }
 
+  /* Llamada entrante simulada. Es una ayuda de desarrollo: solo
+     funciona con el simulador activo, nunca contra una central real.
+     Si no hay contactos cargados, usa un número genérico en lugar de
+     fallar. */
   function simularEntrante() {
+    if (!est.simulado) {
+      traza('La llamada simulada solo está disponible sin central real', 'warn');
+      return;
+    }
     if (est.estado !== 'reposo' || est.pausa) return;
-    const c = DIRECTORIO[Math.floor(Math.random() * 6)];
-    est.numero = c.n; est.direccion = 'entrante';
+
+    const c = (typeof DIRECTORIO !== 'undefined' && DIRECTORIO.length)
+      ? DIRECTORIO[Math.floor(Math.random() * DIRECTORIO.length)]
+      : null;
+
+    est.numero = c ? c.n : '3000000000';
+    est.direccion = 'entrante';
     est.session = { simulada: true };
     cambiar('timbrando');
   }

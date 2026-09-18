@@ -618,9 +618,9 @@ textarea.fi{resize:vertical;min-height:66px;line-height:1.5}
   <!-- ─────── PRINCIPAL ─────── -->
   <div class="main">
     <header class="top">
-      <h1 id="titulo">Escritorio</h1>
-      <div class="sep"></div>
-      <div class="est est-off" id="estAg"><span class="d"></span><span id="estAgTx">Sin conectar</span></div>
+      <!-- El título y el estado del agente se retiraron de aquí: el
+           estado vive ahora en la tarjeta del softphone, junto a los
+           controles de llamada. -->
       <div style="flex:1"></div>
       <div class="reg" id="regTag"><span class="d"></span><span id="regTx">Sin registrar</span></div>
     </header>
@@ -634,7 +634,10 @@ textarea.fi{resize:vertical;min-height:66px;line-height:1.5}
           <!-- Columna 1: softphone -->
           <div class="col">
             <div class="c">
-              <div class="c-h"><h2>Softphone</h2><span class="t o" id="spTag">En reposo</span></div>
+              <div class="c-h">
+                <div class="est est-off" id="estAg"><span class="d"></span><span id="estAgTx">Sin conectar</span></div>
+                <span class="t o" id="spTag">En reposo</span>
+              </div>
               <p class="c-sub" id="spSub">Marca un número o espera una llamada.</p>
  
               <div class="pan" id="pan">
@@ -729,7 +732,7 @@ textarea.fi{resize:vertical;min-height:66px;line-height:1.5}
  
                 <div class="f" id="trPanelExterno" style="display:none;margin-top:10px">
                   <label>Celular o número fijo</label>
-                  <input class="fi mono" id="trExterno" placeholder="3105558812" autocomplete="off">
+                  <input class="fi mono" id="trExterno" placeholder="Celular o fijo" autocomplete="off">
                   <div class="hint" id="trExternoHint">Celular: 10 dígitos. Fijo: 60 + 8 dígitos.</div>
                 </div>
  
@@ -766,6 +769,22 @@ textarea.fi{resize:vertical;min-height:66px;line-height:1.5}
                   <svg viewBox="0 0 24 24"><path d="M17 8h1a4 4 0 1 1 0 8h-1M3 8h14v9a4 4 0 0 1-4 4H7a4 4 0 0 1-4-4V8zM6 1v3M10 1v3M14 1v3"/></svg>Break</button>
                 <button class="pz" data-p="Retroalimentación">
                   <svg viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>Retro</button>
+                <button class="pz" id="pzOtro" data-p="__otro__">
+                  <svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>Otro</button>
+              </div>
+ 
+              <!-- Estado personalizado: el agente escribe el motivo -->
+              <div id="otroEstado" style="display:none;margin-top:9px">
+                <div class="f" style="margin:0">
+                  <label>Motivo de la pausa</label>
+                  <input class="fi" id="otroMotivo" maxlength="40"
+                         placeholder="Ej. Capacitación, Reunión…" autocomplete="off">
+                  <div class="hint">Queda registrado en los reportes con ese nombre.</div>
+                </div>
+                <div class="ctrls" style="margin-top:7px">
+                  <button class="b b-teal b-sm" id="btnOtroOk">Entrar en pausa</button>
+                  <button class="b b-gh b-sm" id="btnOtroCancel">Cancelar</button>
+                </div>
               </div>
             </div>
           </div>
@@ -803,22 +822,6 @@ textarea.fi{resize:vertical;min-height:66px;line-height:1.5}
                 </div>
                 <button class="b b-teal b-w b-lg" id="btnTipGuardar">Guardar tipificación</button>
               </div>
-            </div>
- 
- 
-            <div class="c">
-              <div class="c-h"><h2>Formulario de la campaña</h2><span class="t o" id="formCampana">—</span></div>
-              <p class="c-sub">Se despliega según la campaña asignada.</p>
-              <div class="f">
-                <label>Formulario</label>
-                <select class="fi" id="selForm"><option value="">Selecciona…</option></select>
-              </div>
-              <div class="f">
-                <label>Número del contacto</label>
-                <input class="fi mono" id="formNum" placeholder="Se completa con la llamada">
-              </div>
-              <div id="formCampos"><div class="vacio">Selecciona un formulario.</div></div>
-              <button class="b b-teal b-w" id="btnFormGuardar" style="display:none">Guardar respuesta</button>
             </div>
  
             <div class="c">
@@ -1223,6 +1226,17 @@ textarea.fi{resize:vertical;min-height:66px;line-height:1.5}
   </div>
 </div>
  
+<!-- Elementos del módulo de formularios. La tarjeta se retiró del
+     escritorio del agente, pero el módulo sigue cargado para el
+     diseñador del superadministrador. -->
+<div id="formOculto" style="display:none">
+  <span id="formCampana"></span>
+  <select id="selForm"></select>
+  <input id="formNum">
+  <div id="formCampos"></div>
+  <button id="btnFormGuardar"></button>
+</div>
+ 
 <audio id="audioRemoto" autoplay style="display:none"></audio>
  
 <!-- ═══════════════════════════════════════════════════════════════
@@ -1247,3 +1261,16 @@ textarea.fi{resize:vertical;min-height:66px;line-height:1.5}
 </body>
 </html>
  
+
+
+
+
+
+
+
+
+
+
+
+
+

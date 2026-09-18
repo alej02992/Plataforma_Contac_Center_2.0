@@ -87,7 +87,7 @@ const MENU = [
   /* ── AGENTE ──
      Un solo escritorio. Contactos, formularios e historial viven
      dentro de él, para que el agente no navegue fuera de su espacio. */
-  { v:'escritorio', et:'Escritorio', permiso:'softphone',
+  { v:'escritorio', et:'Llamadas', permiso:'softphone',
     icono:'<rect x="3" y="3" width="7" height="9" rx="1"/><rect x="14" y="3" width="7" height="5" rx="1"/><rect x="14" y="12" width="7" height="9" rx="1"/><rect x="3" y="16" width="7" height="5" rx="1"/>' },
 
   /* ── SUPERVISOR ── */
@@ -122,7 +122,7 @@ const MENU = [
 ];
 
 const TITULOS = {
-  escritorio:'Escritorio', supervision:'Seguimiento de la operación',
+  escritorio:'Llamadas', supervision:'Seguimiento de la operación',
   campanas:'Gestión de campañas', grabaciones:'Grabaciones',
   escucha:'Escucha en línea', reportes:'Reportería',
   disenador:'Diseñador de formularios', admcampanas:'Configuración de campañas',
@@ -161,7 +161,6 @@ $('nav').addEventListener('click', (e) => {
 function irA(vista) {
   document.querySelectorAll('.nv').forEach((x) => x.classList.toggle('on', x.dataset.v === vista));
   document.querySelectorAll('.vista').forEach((v) => v.classList.toggle('on', v.dataset.v === vista));
-  $('titulo').textContent = TITULOS[vista] || vista;
 
   // La supervisión solo corre su reloj mientras se está viendo
   if (typeof supervision !== 'undefined') {
@@ -524,6 +523,17 @@ function marcarEstadoAgente(texto) {
   $('estAgTx').textContent = texto;
 }
 
+/** Pone al agente en pausa con el motivo indicado. */
+function entrarEnPausa(motivo, boton) {
+  ui.pausa = motivo;
+  telefonia.pausa = motivo;
+  document.querySelectorAll('.pz').forEach((x) => x.classList.toggle('on', x === boton));
+  marcarEstadoAgente(motivo);
+  $('btnCall').disabled = true;
+  telefonia.traza('Agente en pausa: ' + motivo, 'info');
+  servicio.registrarPausa(motivo, true);
+}
+
 $('pausas').addEventListener('click', (e) => {
   const b = e.target.closest('.pz');
   if (!b) return;
@@ -531,18 +541,54 @@ $('pausas').addEventListener('click', (e) => {
     aviso('No puedes entrar en pausa con una llamada en curso.', 'av-a');
     return;
   }
-  ui.pausa = b.dataset.p;
-  telefonia.pausa = ui.pausa;
-  document.querySelectorAll('.pz').forEach((x) => x.classList.toggle('on', x === b));
-  marcarEstadoAgente(ui.pausa);
-  $('btnCall').disabled = true;
-  telefonia.traza('Agente en pausa: ' + ui.pausa, 'info');
-  servicio.registrarPausa(ui.pausa, true);
+
+  /* El botón "Otro" abre el campo para escribir el motivo en lugar de
+     entrar en pausa directamente. */
+  if (b.dataset.p === '__otro__') {
+    $('otroEstado').style.display = '';
+    $('otroMotivo').value = '';
+    $('otroMotivo').focus();
+    return;
+  }
+
+  $('otroEstado').style.display = 'none';
+  entrarEnPausa(b.dataset.p, b);
+});
+
+/* ── Estado personalizado ── */
+$('btnOtroOk').addEventListener('click', () => {
+  const motivo = $('otroMotivo').value.trim();
+
+  if (motivo.length < 3) {
+    aviso('Escribe el motivo de la pausa, al menos tres caracteres.', 'av-a');
+    $('otroMotivo').focus();
+    return;
+  }
+  if (telefonia.estado !== 'reposo') {
+    aviso('No puedes entrar en pausa con una llamada en curso.', 'av-a');
+    return;
+  }
+
+  $('otroEstado').style.display = 'none';
+  entrarEnPausa(motivo, $('pzOtro'));
+  $('pzOtro').lastChild.textContent = motivo.length > 12
+    ? motivo.slice(0, 11) + '…' : motivo;
+});
+
+$('btnOtroCancel').addEventListener('click', () => {
+  $('otroEstado').style.display = 'none';
+});
+
+$('otroMotivo').addEventListener('keydown', (e) => {
+  if (e.key === 'Enter') $('btnOtroOk').click();
+  if (e.key === 'Escape') $('btnOtroCancel').click();
 });
 
 $('btnDisponible').addEventListener('click', () => {
   ui.pausa = null; telefonia.pausa = null;
   document.querySelectorAll('.pz').forEach((x) => x.classList.remove('on'));
+  $('otroEstado').style.display = 'none';
+  $('pzOtro').lastChild.textContent = 'Otro';    // vuelve a su etiqueta
   marcarEstadoAgente(telefonia.registrado ? 'Disponible' : 'Sin conectar');
   $('btnCall').disabled = !telefonia.registrado || telefonia.estado !== 'reposo';
   telefonia.traza('Agente disponible', 'info');
